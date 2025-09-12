@@ -78,7 +78,7 @@ export interface District {
 }
 
 export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
-export type UserType = 'rotaractor' | 'rotary' | 'public' | 'medical';
+export type UserType = 'rotaractor' | 'rotary' | 'public' | 'medical' | 'admin';
 export type UrgencyLevel = 'critical' | 'urgent' | 'regular';
 export type RequestStatus = 'active' | 'partial' | 'fulfilled' | 'received';
 export type DonationStatus = 'offered' | 'confirmed' | 'completed' | 'cancelled';

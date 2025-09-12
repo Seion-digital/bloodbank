@@ -11,6 +11,7 @@ import { BloodRequest } from './pages/BloodRequest';
 import { SearchDonors } from './pages/SearchDonors';
 import { Messages } from './pages/Messages';
 import { MyRequests } from './pages/MyRequests';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
@@ -27,6 +28,24 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
   
+  return <>{children}</>;
+};
+
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
+  if (!user || user.userType !== 'admin') {
+    return <Navigate to="/login" replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -63,6 +82,9 @@ function AppRoutes() {
       <Route path="/messages" element={<ProtectedRoute><Layout><Messages /></Layout></ProtectedRoute>} />
       <Route path="/my-requests" element={<ProtectedRoute><Layout><MyRequests /></Layout></ProtectedRoute>} />
       
+      {/* Admin Routes */}
+      <Route path="/admin/dashboard" element={<AdminRoute><Layout><AdminDashboard /></Layout></AdminRoute>} />
+
       {/* Redirect unknown routes */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

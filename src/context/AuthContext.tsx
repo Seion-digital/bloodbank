@@ -3,7 +3,7 @@ import { User, UserType } from '../types';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<User | null>;
   register: (userData: Partial<User>) => Promise<boolean>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => void;
@@ -33,44 +33,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     setIsLoading(true);
     
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Mock user data based on email
-    const mockUser: User = {
-      id: '1',
-      email,
-      phone: '+1234567890',
-      fullName: email === 'john@rotary.org' ? 'John Smith' : 'Demo User',
-      dateOfBirth: '1990-01-01',
-      gender: 'male',
-      bloodType: 'O+',
-      weight: 70,
-      medicalConditions: 'None',
-      districtId: '3232',
-      clubName: 'Bangalore Central',
-      memberId: 'RC001',
-      userType: email.includes('rotary') ? 'rotary' : 'public',
-      verificationStatus: 'verified',
-      address: '123 Main St',
-      city: 'Bangalore',
-      state: 'Karnataka',
-      coordinates: { lat: 12.9716, lng: 77.5946 },
-      emergencyContact: '+1234567891',
-      preferredHospital: 'Apollo Hospital',
-      lastDonationDate: '2024-01-15',
-      totalDonations: 5,
-      createdAt: '2024-01-01',
-      isActive: true,
-    };
+    let mockUser: User;
+
+    if (email === 'admin' && password === 'admin@123') {
+      mockUser = {
+        id: 'admin-001',
+        email: 'admin',
+        phone: '+1111111111',
+        fullName: 'Administrator',
+        dateOfBirth: '1980-01-01',
+        gender: 'other',
+        bloodType: 'O+',
+        weight: 80,
+        medicalConditions: 'None',
+        districtId: 'N/A',
+        clubName: 'Admin',
+        memberId: 'ADMIN001',
+        userType: 'admin',
+        verificationStatus: 'verified',
+        address: '1 Admin Way',
+        city: 'Adminville',
+        state: 'State of Admin',
+        coordinates: { lat: 0, lng: 0 },
+        emergencyContact: '+1111111111',
+        preferredHospital: 'Admin General',
+        lastDonationDate: null,
+        totalDonations: 100,
+        createdAt: new Date().toISOString(),
+        isActive: true,
+      };
+    } else {
+      mockUser = {
+        id: '1',
+        email,
+        phone: '+1234567890',
+        fullName: 'Demo User',
+        dateOfBirth: '1990-01-01',
+        gender: 'male',
+        bloodType: 'O+',
+        weight: 70,
+        medicalConditions: 'None',
+        districtId: '3232',
+        clubName: 'Bangalore Central',
+        memberId: 'RC001',
+        userType: 'public',
+        verificationStatus: 'verified',
+        address: '123 Main St',
+        city: 'Bangalore',
+        state: 'Karnataka',
+        coordinates: { lat: 12.9716, lng: 77.5946 },
+        emergencyContact: '+1234567891',
+        preferredHospital: 'Apollo Hospital',
+        lastDonationDate: '2024-01-15',
+        totalDonations: 5,
+        createdAt: '2024-01-01',
+        isActive: true,
+      };
+    }
 
     setUser(mockUser);
     localStorage.setItem('bloodDonationUser', JSON.stringify(mockUser));
     setIsLoading(false);
-    return true;
+    return mockUser;
   };
 
   const register = async (userData: Partial<User>): Promise<boolean> => {
