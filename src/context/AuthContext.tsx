@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { User } from '../types';
+import { User, RegistrationData } from '../types';
 import { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: Partial<User>) => Promise<boolean>;
+  register: (userData: RegistrationData) => Promise<boolean>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   isLoading: boolean;
@@ -79,9 +79,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  const register = async (userData: Partial<User>): Promise<boolean> => {
+  const register = async (userData: RegistrationData): Promise<boolean> => {
     setIsLoading(true);
-    const { email, password } = userData as any;
+    const { email, password } = userData;
     if (!email || !password) {
       console.error("Email and password are required for registration.");
       setIsLoading(false);
@@ -100,13 +100,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     if (data.user) {
-        const { password, ...profileData } = userData as any;
+        const { password, ...profileData } = userData;
+        // The user is created in auth.users, now create their profile in public.users
         const { error: profileError } = await supabase
             .from('users')
             .insert({ ...profileData, id: data.user.id, email: data.user.email });
 
         if (profileError) {
             console.error('Error creating user profile:', profileError.message);
+            // Optional: handle user deletion if profile creation fails
             setIsLoading(false);
             return false;
         }
