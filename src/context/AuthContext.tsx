@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserType } from '../types';
+import { User } from '../types';
+import { supabase } from '../supabaseClient';
+import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -25,103 +27,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate checking for stored auth
-    const storedUser = localStorage.getItem('bloodDonationUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await fetchUserProfile(session);
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    getSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        await fetchUserProfile(session);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const fetchUserProfile = async (session: Session) => {
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user profile:', error);
+    } else if (data) {
+      setUser(data as User);
     }
     setIsLoading(false);
-  }, []);
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock user data based on email
-    const mockUser: User = {
-      id: '1',
-      email,
-      phone: '+1234567890',
-      fullName: email === 'john@rotary.org' ? 'John Smith' : 'Demo User',
-      dateOfBirth: '1990-01-01',
-      gender: 'male',
-      bloodType: 'O+',
-      weight: 70,
-      medicalConditions: 'None',
-      districtId: '3232',
-      clubName: 'Bangalore Central',
-      memberId: 'RC001',
-      userType: email.includes('rotary') ? 'rotary' : 'public',
-      verificationStatus: 'verified',
-      address: '123 Main St',
-      city: 'Bangalore',
-      state: 'Karnataka',
-      coordinates: { lat: 12.9716, lng: 77.5946 },
-      emergencyContact: '+1234567891',
-      preferredHospital: 'Apollo Hospital',
-      lastDonationDate: '2024-01-15',
-      totalDonations: 5,
-      createdAt: '2024-01-01',
-      isActive: true,
-    };
-
-    setUser(mockUser);
-    localStorage.setItem('bloodDonationUser', JSON.stringify(mockUser));
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setIsLoading(false);
+    if (error) {
+      console.error('Error logging in:', error);
+      return false;
+    }
     return true;
   };
 
   const register = async (userData: Partial<User>): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      email: userData.email || '',
-      phone: userData.phone || '',
-      fullName: userData.fullName || '',
-      dateOfBirth: userData.dateOfBirth || '',
-      gender: userData.gender || 'male',
-      bloodType: userData.bloodType || 'O+',
-      weight: userData.weight || 60,
-      medicalConditions: userData.medicalConditions || 'None',
-      districtId: userData.districtId || '3232',
-      clubName: userData.clubName || '',
-      memberId: userData.memberId || '',
-      userType: userData.userType || 'public',
-      verificationStatus: 'pending',
-      address: userData.address || '',
-      city: userData.city || '',
-      state: userData.state || '',
-      coordinates: { lat: 12.9716, lng: 77.5946 },
-      emergencyContact: userData.emergencyContact || '',
-      preferredHospital: userData.preferredHospital || '',
-      lastDonationDate: null,
-      totalDonations: 0,
-      createdAt: new Date().toISOString(),
-      isActive: true,
-    };
+    const { email, password, ...profileData } = userData;
+    const { data, error } = await supabase.auth.signUp({
+        email: email!,
+        password: password!,
+        options: {
+            data: profileData,
+        },
+    });
 
-    setUser(newUser);
-    localStorage.setItem('bloodDonationUser', JSON.stringify(newUser));
     setIsLoading(false);
+    if (error) {
+      console.error('Error registering:', error);
+      return false;
+    }
+    if (data.user) {
+        const { error: profileError } = await supabase
+            .from('users')
+            .update(profileData)
+            .eq('id', data.user.id);
+
+        if (profileError) {
+            console.error('Error saving user profile:', profileError);
+            return false;
+        }
+    }
     return true;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    setIsLoading(true);
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('bloodDonationUser');
+    setIsLoading(false);
   };
 
-  const updateProfile = (updates: Partial<User>) => {
+  const updateProfile = async (updates: Partial<User>) => {
     if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem('bloodDonationUser', JSON.stringify(updatedUser));
+      setIsLoading(true);
+      const { error } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error updating profile:', error);
+      } else {
+        setUser({ ...user, ...updates });
+      }
+      setIsLoading(false);
     }
   };
 

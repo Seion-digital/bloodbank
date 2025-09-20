@@ -148,3 +148,24 @@ CREATE POLICY "Public can view all achievements" ON achievements FOR SELECT USIN
 ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own achievements" ON user_achievements FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Public can view all user_achievements" ON user_achievements FOR SELECT USING (true);
+
+-- Function to check for admin user
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN (
+        SELECT user_type
+        FROM public.users
+        WHERE id = auth.uid()
+    ) = 'admin';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Admin bypass policies
+CREATE POLICY "Admins can do anything" ON districts FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Admins can do anything" ON users FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Admins can do anything" ON blood_requests FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Admins can do anything" ON donations FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Admins can do anything" ON messages FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Admins can do anything" ON achievements FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Admins can do anything" ON user_achievements FOR ALL USING (is_admin()) WITH CHECK (is_admin());
