@@ -2,18 +2,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
 
-// Define admin users
-const ADMIN_USERS = [
-  { email: 'admin1@example.com', password: 'password1' },
-  { email: 'admin2@example.com', password: 'password2' },
-];
+// The predefined email for the admin user.
+const ADMIN_EMAIL = 'admin@example.com';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: Partial<User>) => Promise<boolean>;
-  logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
+  signInWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
   isLoading: boolean;
   isAdmin: boolean;
 }
@@ -34,125 +29,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const getActiveSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setIsLoading(true);
       if (session?.user) {
-        const { data: userProfile, error } = await supabase
+        // Check if a profile exists for the user.
+        let { data: profile } = await supabase
           .from('users')
           .select('*')
           .eq('id', session.user.id)
           .single();
 
-        if (error) {
-          console.error('Error fetching user profile:', error);
-        } else {
-          setUser(userProfile);
-          const adminUser = ADMIN_USERS.find(admin => admin.email === session.user.email);
-          if (adminUser) {
-            setIsAdmin(true);
-          }
-        }
-      }
-      setIsLoading(false);
-    };
+        // If no profile exists, create one.
+        if (!profile) {
+          const { data: newUser, error: insertError } = await supabase
+            .from('users')
+            .insert({
+              id: session.user.id,
+              email: session.user.email,
+              full_name: session.user.user_metadata.full_name || session.user.email,
+              profile_image: session.user.user_metadata.avatar_url,
+              user_type: 'public', // Default user type
+            })
+            .select()
+            .single();
 
-    getActiveSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        const adminUser = ADMIN_USERS.find(admin => admin.email === session.user.email);
-        if (adminUser) {
-          setIsAdmin(true);
-        }
-        // Fetch user profile
-        supabase.from('users').select('*').eq('id', session.user.id).single().then(({ data, error }) => {
-          if (error) {
-            console.error('Error fetching user profile:', error);
+          if (insertError) {
+            console.error('Error creating user profile:', insertError);
           } else {
-            setUser(data);
+            profile = newUser;
           }
-        });
-      } else if (event === 'SIGNED_OUT') {
+        }
+
+        setUser(profile);
+
+        // Check for admin role.
+        if (profile?.email === ADMIN_EMAIL) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      } else {
         setUser(null);
         setIsAdmin(false);
       }
+      setIsLoading(false);
     });
+
+    // Check for an active session on initial load
+    const getActiveSession = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if(!session) {
+            setIsLoading(false);
+        }
+    };
+    getActiveSession();
+
 
     return () => {
       authListener.subscription.unsubscribe();
     };
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    const adminUser = ADMIN_USERS.find(admin => admin.email === email && admin.password === password);
-    
-    if (adminUser) {
-      // This logic handles the creation of admin users on their first login.
-      // It attempts to sign them up in Supabase Auth if they don't exist,
-      // ensuring that admin users can log in without manual setup in Supabase.
-      // This is a simple approach based on the user's request for basic auth.
-      let { data: existingUser, error: existingUserError } = await supabase.from('users').select('id').eq('email', email).single();
-      if (!existingUser) {
-          const { data: authData, error: signUpError } = await supabase.auth.signUp({ email, password });
-          if (signUpError && signUpError.message !== 'User already registered') {
-              console.error('Admin sign up error:', signUpError);
-              setIsLoading(false);
-              return false;
-          }
-
-          if (authData.user) {
-            const { error: insertError } = await supabase.from('users').insert([{ id: authData.user.id, email: email, user_type: 'admin', verification_status: 'verified' }]);
-            if (insertError) {
-              console.error('Admin profile creation error:', insertError);
-              setIsLoading(false);
-              return false;
-            }
-          }
-      }
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
     if (error) {
-      console.error('Login error:', error);
-      setIsLoading(false);
-      return false;
+      console.error('Error signing in with Google:', error);
+      throw error;
     }
-
-    setIsLoading(false);
-    return true;
-  };
-
-  const register = async (userData: Partial<User>): Promise<boolean> => {
-    setIsLoading(true);
-    const { email, password, ...profileData } = userData;
-
-    if (!email || !password) {
-      console.error('Email and password are required for registration.');
-      setIsLoading(false);
-      return false;
-    }
-
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({ email, password });
-    if (signUpError) {
-      console.error('Registration error:', signUpError);
-      setIsLoading(false);
-      return false;
-    }
-
-    if (authData.user) {
-      const { error: insertError } = await supabase.from('users').insert([{ id: authData.user.id, ...profileData, email }]);
-      if (insertError) {
-        console.error('Profile creation error:', insertError);
-        // Optional: delete the user from auth if profile creation fails
-        // await supabase.auth.api.deleteUser(authData.user.id);
-        setIsLoading(false);
-        return false;
-      }
-    }
-
-    setIsLoading(false);
-    return true;
   };
 
   const logout = async () => {
@@ -161,24 +106,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAdmin(false);
   };
 
-  const updateProfile = async (updates: Partial<User>) => {
-    if (user) {
-      const { error } = await supabase.from('users').update(updates).eq('id', user.id);
-      if (error) {
-        console.error('Profile update error:', error);
-      } else {
-        setUser({ ...user, ...updates });
-      }
-    }
-  };
-
   return (
     <AuthContext.Provider value={{
       user,
-      login,
-      register,
+      signInWithGoogle,
       logout,
-      updateProfile,
       isLoading,
       isAdmin,
     }}>
