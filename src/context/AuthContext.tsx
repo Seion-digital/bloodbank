@@ -27,44 +27,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const getActiveUser = async (supabaseUser: SupabaseUser | null) => {
-      if (!supabaseUser) {
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: userProfile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        setUser(null);
+    setIsLoading(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const supabaseUser = session?.user;
+      if (supabaseUser) {
+        const { data: userProfile, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', supabaseUser.id)
+          .single();
+        setUser(error ? null : userProfile as User);
       } else {
-        setUser(userProfile as User);
+        setUser(null);
       }
       setIsLoading(false);
-    };
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
-        setIsLoading(true);
-        await getActiveUser(session?.user ?? null);
-      }
-    );
-    
-    // Initial load
-    const checkInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      await getActiveUser(session?.user ?? null);
-    };
-    checkInitialSession();
+    });
 
     return () => {
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
