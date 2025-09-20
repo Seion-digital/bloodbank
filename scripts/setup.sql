@@ -77,7 +77,7 @@ CREATE TABLE donations (
     hospital_confirmation BOOLEAN DEFAULT false,
     medical_staff_id UUID,
     notes TEXT,
-    created_at TIMESTAMT_Z DEFAULT now(),
+    created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
