@@ -10,7 +10,6 @@ import {
   MapPin, 
   Clock, 
   Users,
-  AlertTriangle,
   CheckCircle,
   Calendar,
   Phone
@@ -19,12 +18,20 @@ import { BloodRequest } from '../types';
 
 export const MyRequests: React.FC = () => {
   const { user } = useAuth();
-  const { bloodRequests, updateBloodRequest } = useApp();
+  const { bloodRequests, updateBloodRequest, loading } = useApp();
   
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
   const [selectedRequest, setSelectedRequest] = useState<BloodRequest | null>(null);
 
-  const userRequests = bloodRequests.filter(request => request.requesterId === user?.id);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
+  const userRequests = bloodRequests.filter(request => request.requester_id === user?.id);
   
   const filteredRequests = userRequests.filter(request => {
     switch (activeTab) {
@@ -151,7 +158,7 @@ export const MyRequests: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-500">Units Received</p>
               <p className="text-2xl font-bold text-gray-900">
-                {userRequests.reduce((sum, req) => sum + req.unitsFulfilled, 0)}
+                {userRequests.reduce((sum, req) => sum + req.units_fulfilled, 0)}
               </p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
@@ -220,7 +227,7 @@ export const MyRequests: React.FC = () => {
           ) : (
             <div className="space-y-6">
               {filteredRequests.map((request) => {
-                const timeRemaining = getTimeRemaining(request.requiredByDate);
+                const timeRemaining = getTimeRemaining(request.required_by_date);
                 
                 return (
                   <div key={request.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow duration-200">
@@ -228,16 +235,16 @@ export const MyRequests: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-3">
                           <h3 className="text-lg font-semibold text-gray-900">
-                            {request.patientName}
+                            {request.patient_name}
                           </h3>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
                             {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                           </span>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getUrgencyColor(request.urgencyLevel)}`}>
-                            {request.urgencyLevel}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getUrgencyColor(request.urgency_level)}`}>
+                            {request.urgency_level}
                           </span>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            {request.patientBloodType}
+                            {request.patient_blood_type}
                           </span>
                         </div>
 
@@ -245,12 +252,12 @@ export const MyRequests: React.FC = () => {
                           <div className="flex items-center space-x-2">
                             <Heart className="h-4 w-4 text-red-500" />
                             <span className="text-sm text-gray-600">
-                              {request.unitsFulfilled}/{request.unitsRequired} units
+                              {request.units_fulfilled}/{request.units_required} units
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <MapPin className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm text-gray-600">{request.hospitalName}</span>
+                            <span className="text-sm text-gray-600">{request.hospital_name}</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Clock className={`h-4 w-4 ${timeRemaining.color}`} />
@@ -263,16 +270,16 @@ export const MyRequests: React.FC = () => {
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
                           <span className="flex items-center space-x-1">
                             <Calendar className="h-4 w-4" />
-                            <span>Required by: {formatDate(request.requiredByDate)}</span>
+                            <span>Required by: {formatDate(request.required_by_date)}</span>
                           </span>
                           <span className="flex items-center space-x-1">
                             <Phone className="h-4 w-4" />
-                            <span>{request.contactNumber}</span>
+                            <span>{request.contact_number}</span>
                           </span>
                         </div>
 
                         <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                          {request.medicalCondition}
+                          {request.medical_condition}
                         </p>
                       </div>
 
@@ -309,12 +316,12 @@ export const MyRequests: React.FC = () => {
                     <div className="mt-4">
                       <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
                         <span>Progress</span>
-                        <span>{Math.round((request.unitsFulfilled / request.unitsRequired) * 100)}%</span>
+                        <span>{Math.round((request.units_fulfilled / request.units_required) * 100)}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className="bg-red-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${(request.unitsFulfilled / request.unitsRequired) * 100}%` }}
+                          style={{ width: `${(request.units_fulfilled / request.units_required) * 100}%` }}
                         ></div>
                       </div>
                     </div>
@@ -347,41 +354,41 @@ export const MyRequests: React.FC = () => {
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Patient Information</h3>
                   <div className="space-y-2 text-sm">
-                    <p><span className="text-gray-500">Name:</span> {selectedRequest.patientName}</p>
-                    <p><span className="text-gray-500">Age:</span> {selectedRequest.patientAge} years</p>
-                    <p><span className="text-gray-500">Blood Type:</span> {selectedRequest.patientBloodType}</p>
-                    <p><span className="text-gray-500">Units Required:</span> {selectedRequest.unitsRequired}</p>
+                    <p><span className="text-gray-500">Name:</span> {selectedRequest.patient_name}</p>
+                    <p><span className="text-gray-500">Age:</span> {selectedRequest.patient_age} years</p>
+                    <p><span className="text-gray-500">Blood Type:</span> {selectedRequest.patient_blood_type}</p>
+                    <p><span className="text-gray-500">Units Required:</span> {selectedRequest.units_required}</p>
                   </div>
                 </div>
                 
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Request Details</h3>
                   <div className="space-y-2 text-sm">
-                    <p><span className="text-gray-500">Urgency:</span> {selectedRequest.urgencyLevel}</p>
+                    <p><span className="text-gray-500">Urgency:</span> {selectedRequest.urgency_level}</p>
                     <p><span className="text-gray-500">Status:</span> {selectedRequest.status}</p>
-                    <p><span className="text-gray-500">Required By:</span> {formatDate(selectedRequest.requiredByDate)}</p>
+                    <p><span className="text-gray-500">Required By:</span> {formatDate(selectedRequest.required_by_date)}</p>
                   </div>
                 </div>
               </div>
               
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Medical Condition</h3>
-                <p className="text-sm text-gray-600">{selectedRequest.medicalCondition}</p>
+                <p className="text-sm text-gray-600">{selectedRequest.medical_condition}</p>
               </div>
               
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Hospital Information</h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="text-gray-500">Hospital:</span> {selectedRequest.hospitalName}</p>
-                  <p><span className="text-gray-500">Address:</span> {selectedRequest.hospitalAddress}</p>
-                  <p><span className="text-gray-500">Contact:</span> {selectedRequest.hospitalContact}</p>
+                  <p><span className="text-gray-500">Hospital:</span> {selectedRequest.hospital_name}</p>
+                  <p><span className="text-gray-500">Address:</span> {selectedRequest.hospital_address}</p>
+                  <p><span className="text-gray-500">Contact:</span> {selectedRequest.hospital_contact}</p>
                 </div>
               </div>
               
-              {selectedRequest.specialRequirements && (
+              {selectedRequest.special_requirements && (
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Special Requirements</h3>
-                  <p className="text-sm text-gray-600">{selectedRequest.specialRequirements}</p>
+                  <p className="text-sm text-gray-600">{selectedRequest.special_requirements}</p>
                 </div>
               )}
             </div>

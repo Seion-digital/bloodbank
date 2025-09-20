@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Search, 
@@ -11,13 +10,35 @@ import {
   Star,
   Award,
   Clock,
-  User
+  User as UserIcon
 } from 'lucide-react';
-import { BloodType } from '../types';
+import { BloodType, User } from '../types';
+import { useAuth } from '../context/AuthContext';
+
+// Haversine formula to calculate distance between two lat/lng points
+const getDistance = (coords1: {lat: number, lng: number} | null, coords2: {lat: number, lng: number} | null) => {
+  if (!coords1 || !coords2) return Infinity;
+
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const R = 6371; // Earth radius in km
+
+  const dLat = toRad(coords2.lat - coords1.lat);
+  const dLon = toRad(coords2.lng - coords1.lng);
+  const lat1 = toRad(coords1.lat);
+  const lat2 = toRad(coords2.lat);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+};
+
 
 export const SearchDonors: React.FC = () => {
-  const { user } = useAuth();
-  const { bloodRequests } = useApp();
+  const { user: currentUser } = useAuth();
+  const { users, loading } = useApp();
   
   const [searchFilters, setSearchFilters] = useState({
     bloodType: '' as BloodType | '',
@@ -27,53 +48,11 @@ export const SearchDonors: React.FC = () => {
     sortBy: 'distance'
   });
 
-  const [searchResults, setSearchResults] = useState([
-    {
-      id: '1',
-      name: 'John Smith',
-      bloodType: 'O+' as BloodType,
-      location: 'Koramangala, Bangalore',
-      distance: 2.5,
-      lastDonation: '2024-01-15',
-      totalDonations: 8,
-      clubName: 'Bangalore Central Rotary',
-      verificationStatus: 'verified',
-      rating: 4.9,
-      responseTime: '12 mins',
-      availability: 'available',
-      profileImage: null
-    },
-    {
-      id: '2',
-      name: 'Sarah Johnson',
-      bloodType: 'A+' as BloodType,
-      location: 'Indiranagar, Bangalore',
-      distance: 3.8,
-      lastDonation: '2023-12-10',
-      totalDonations: 5,
-      clubName: 'Indiranagar Rotaract',
-      verificationStatus: 'verified',
-      rating: 4.7,
-      responseTime: '25 mins',
-      availability: 'available',
-      profileImage: null
-    },
-    {
-      id: '3',
-      name: 'Dr. Rajesh Kumar',
-      bloodType: 'AB+' as BloodType,
-      location: 'Whitefield, Bangalore',
-      distance: 12.5,
-      lastDonation: '2024-02-20',
-      totalDonations: 15,
-      clubName: 'Whitefield Rotary',
-      verificationStatus: 'verified',
-      rating: 5.0,
-      responseTime: '8 mins',
-      availability: 'busy',
-      profileImage: null
-    }
-  ]);
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+
+  useEffect(() => {
+    setSearchResults(users);
+  }, [users]);
 
   const bloodTypes: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -82,20 +61,10 @@ export const SearchDonors: React.FC = () => {
     setSearchFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSearch = () => {
-    // In a real app, this would make an API call with the search filters
-    console.log('Searching with filters:', searchFilters);
-  };
-
-  const handleContactDonor = (donorId: string) => {
-    console.log('Contacting donor:', donorId);
-  };
-
-  const handleSendMessage = (donorId: string) => {
-    console.log('Sending message to donor:', donorId);
-  };
-
-  const getDonationEligibility = (lastDonation: string) => {
+  const getDonationEligibility = (lastDonation: string | null) => {
+    if (!lastDonation) {
+      return { eligible: true, message: 'Eligible to donate', color: 'text-green-600' };
+    }
     const lastDonationDate = new Date(lastDonation);
     const now = new Date();
     const daysSince = Math.floor((now.getTime() - lastDonationDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -111,6 +80,54 @@ export const SearchDonors: React.FC = () => {
       };
     }
   };
+
+  const handleSearch = () => {
+    let filteredUsers = [...users];
+
+    if (searchFilters.bloodType) {
+      filteredUsers = filteredUsers.filter(u => u.blood_type === searchFilters.bloodType);
+    }
+
+    if (searchFilters.location) {
+      const searchTerm = searchFilters.location.toLowerCase();
+      filteredUsers = filteredUsers.filter(u =>
+        u.city?.toLowerCase().includes(searchTerm) ||
+        u.state?.toLowerCase().includes(searchTerm) ||
+        u.address?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    if (searchFilters.availability === 'available') {
+      filteredUsers = filteredUsers.filter(u => u.is_active);
+    } else if (searchFilters.availability === 'eligible') {
+      filteredUsers = filteredUsers.filter(u => getDonationEligibility(u.last_donation_date).eligible);
+    }
+
+    if (currentUser?.coordinates) {
+      filteredUsers = filteredUsers.filter(u => {
+        const distance = getDistance(currentUser.coordinates, u.coordinates);
+        return distance <= parseInt(searchFilters.maxDistance);
+      });
+    }
+
+    setSearchResults(filteredUsers);
+  };
+
+  const handleContactDonor = (donorId: string) => {
+    console.log('Contacting donor:', donorId);
+  };
+
+  const handleSendMessage = (donorId: string) => {
+    console.log('Sending message to donor:', donorId);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -240,33 +257,34 @@ export const SearchDonors: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {searchResults.map((donor) => {
-            const eligibility = getDonationEligibility(donor.lastDonation);
-            
+            const eligibility = getDonationEligibility(donor.last_donation_date);
+            const distance = currentUser?.coordinates ? getDistance(currentUser.coordinates, donor.coordinates) : null;
+
             return (
               <div key={donor.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200">
                 <div className="flex items-start space-x-4">
                   {/* Profile Image */}
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                    {donor.name.charAt(0)}
+                    {donor.full_name.charAt(0)}
                   </div>
 
                   {/* Donor Info */}
                   <div className="flex-1">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{donor.name}</h3>
-                        <p className="text-sm text-gray-600">{donor.clubName}</p>
+                        <h3 className="text-lg font-semibold text-gray-900">{donor.full_name}</h3>
+                        <p className="text-sm text-gray-600">{donor.club_name}</p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          donor.availability === 'available' 
+                          donor.is_active
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {donor.availability === 'available' ? 'Available' : 'Busy'}
+                          {donor.is_active ? 'Available' : 'Busy'}
                         </span>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          {donor.bloodType}
+                          {donor.blood_type}
                         </span>
                       </div>
                     </div>
@@ -276,28 +294,28 @@ export const SearchDonors: React.FC = () => {
                       <div className="text-center">
                         <div className="flex items-center justify-center space-x-1">
                           <MapPin className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm font-medium text-gray-900">{donor.distance} km</span>
+                          <span className="text-sm font-medium text-gray-900">{distance ? `${distance.toFixed(1)} km` : 'N/A'}</span>
                         </div>
                         <span className="text-xs text-gray-500">Distance</span>
                       </div>
                       <div className="text-center">
                         <div className="flex items-center justify-center space-x-1">
                           <Heart className="h-4 w-4 text-red-500" />
-                          <span className="text-sm font-medium text-gray-900">{donor.totalDonations}</span>
+                          <span className="text-sm font-medium text-gray-900">{donor.total_donations}</span>
                         </div>
                         <span className="text-xs text-gray-500">Donations</span>
                       </div>
                       <div className="text-center">
                         <div className="flex items-center justify-center space-x-1">
                           <Star className="h-4 w-4 text-yellow-500" />
-                          <span className="text-sm font-medium text-gray-900">{donor.rating}</span>
+                          <span className="text-sm font-medium text-gray-900">4.8</span>
                         </div>
                         <span className="text-xs text-gray-500">Rating</span>
                       </div>
                       <div className="text-center">
                         <div className="flex items-center justify-center space-x-1">
                           <Clock className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm font-medium text-gray-900">{donor.responseTime}</span>
+                          <span className="text-sm font-medium text-gray-900">15 mins</span>
                         </div>
                         <span className="text-xs text-gray-500">Response</span>
                       </div>
@@ -307,7 +325,7 @@ export const SearchDonors: React.FC = () => {
                     <div className="mt-4 space-y-2">
                       <div className="flex items-center space-x-2">
                         <MapPin className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{donor.location}</span>
+                        <span className="text-sm text-gray-600">{donor.city}, {donor.state}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Award className="h-4 w-4 text-gray-400" />
@@ -346,7 +364,7 @@ export const SearchDonors: React.FC = () => {
       {searchResults.length === 0 && (
         <div className="bg-white rounded-xl shadow-lg p-12 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="h-8 w-8 text-gray-400" />
+            <UserIcon className="h-8 w-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Donors Found</h3>
           <p className="text-gray-600 mb-6">
