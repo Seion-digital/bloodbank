@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserType } from '../types';
+import { supabase } from '../supabaseClient';
+import { User, RegistrationData } from '../types';
+import { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: Partial<User>) => Promise<boolean>;
+  register: (userData: RegistrationData) => Promise<boolean>;
   logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
+  updateProfile: (updates: Partial<User>) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -25,104 +27,119 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate checking for stored auth
-    const storedUser = localStorage.getItem('bloodDonationUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const getActiveUser = async (supabaseUser: SupabaseUser | null) => {
+      if (!supabaseUser) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: userProfile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        setUser(null);
+      } else {
+        setUser(userProfile as User);
+      }
+      setIsLoading(false);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: Session | null) => {
+        setIsLoading(true);
+        await getActiveUser(session?.user ?? null);
+      }
+    );
+    
+    // Initial load
+    const checkInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      await getActiveUser(session?.user ?? null);
+    };
+    checkInitialSession();
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock user data based on email
-    const mockUser: User = {
-      id: '1',
-      email,
-      phone: '+1234567890',
-      fullName: email === 'john@rotary.org' ? 'John Smith' : 'Demo User',
-      dateOfBirth: '1990-01-01',
-      gender: 'male',
-      bloodType: 'O+',
-      weight: 70,
-      medicalConditions: 'None',
-      districtId: '3232',
-      clubName: 'Bangalore Central',
-      memberId: 'RC001',
-      userType: email.includes('rotary') ? 'rotary' : 'public',
-      verificationStatus: 'verified',
-      address: '123 Main St',
-      city: 'Bangalore',
-      state: 'Karnataka',
-      coordinates: { lat: 12.9716, lng: 77.5946 },
-      emergencyContact: '+1234567891',
-      preferredHospital: 'Apollo Hospital',
-      lastDonationDate: '2024-01-15',
-      totalDonations: 5,
-      createdAt: '2024-01-01',
-      isActive: true,
-    };
-
-    setUser(mockUser);
-    localStorage.setItem('bloodDonationUser', JSON.stringify(mockUser));
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setIsLoading(false);
-    return true;
-  };
-
-  const register = async (userData: Partial<User>): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      email: userData.email || '',
-      phone: userData.phone || '',
-      fullName: userData.fullName || '',
-      dateOfBirth: userData.dateOfBirth || '',
-      gender: userData.gender || 'male',
-      bloodType: userData.bloodType || 'O+',
-      weight: userData.weight || 60,
-      medicalConditions: userData.medicalConditions || 'None',
-      districtId: userData.districtId || '3232',
-      clubName: userData.clubName || '',
-      memberId: userData.memberId || '',
-      userType: userData.userType || 'public',
-      verificationStatus: 'pending',
-      address: userData.address || '',
-      city: userData.city || '',
-      state: userData.state || '',
-      coordinates: { lat: 12.9716, lng: 77.5946 },
-      emergencyContact: userData.emergencyContact || '',
-      preferredHospital: userData.preferredHospital || '',
-      lastDonationDate: null,
-      totalDonations: 0,
-      createdAt: new Date().toISOString(),
-      isActive: true,
-    };
-
-    setUser(newUser);
-    localStorage.setItem('bloodDonationUser', JSON.stringify(newUser));
-    setIsLoading(false);
-    return true;
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('bloodDonationUser');
-  };
-
-  const updateProfile = (updates: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem('bloodDonationUser', JSON.stringify(updatedUser));
+    if (error) {
+      console.error('Login error:', error.message);
+      return false;
     }
+    return true;
+  };
+
+  const register = async (userData: RegistrationData): Promise<boolean> => {
+    setIsLoading(true);
+    const { email, password } = userData;
+    if (!email || !password) {
+      console.error("Email and password are required for registration.");
+      setIsLoading(false);
+      return false;
+    }
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (signUpError) {
+      console.error('Registration error:', signUpError.message);
+      setIsLoading(false);
+      return false;
+    }
+    
+    if (data.user) {
+        const { password, ...profileData } = userData;
+        // The user is created in auth.users, now create their profile in public.users
+        const { error: profileError } = await supabase
+            .from('users')
+            .insert({ ...profileData, id: data.user.id, email: data.user.email });
+
+        if (profileError) {
+            console.error('Error creating user profile:', profileError.message);
+            // Optional: handle user deletion if profile creation fails
+            setIsLoading(false);
+            return false;
+        }
+    }
+
+    setIsLoading(false);
+    return true;
+  };
+
+  const logout = async () => {
+    setIsLoading(true);
+    await supabase.auth.signOut();
+    setUser(null);
+    setIsLoading(false);
+  };
+
+  const updateProfile = async (updates: Partial<User>) => {
+    if (!user) return;
+
+    setIsLoading(true);
+    const { error } = await supabase
+      .from('users')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+
+    if (error) {
+      console.error('Error updating profile:', error.message);
+    } else {
+      setUser(prevUser => (prevUser ? { ...prevUser, ...updates } : null));
+    }
+    setIsLoading(false);
   };
 
   return (

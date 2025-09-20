@@ -26,6 +26,8 @@ export interface User {
   profileImage?: string;
 }
 
+export type RegistrationData = Partial<User> & { password?: string };
+
 export interface BloodRequest {
   id: string;
   requesterId: string;

@@ -1,18 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BloodRequest, Donation, Message, Achievement } from '../types';
+import { supabase } from '../supabaseClient';
+import { useAuth } from './AuthContext';
+import { BloodRequest, Donation, Message, Achievement, User } from '../types';
+import { toCamelCase, toSnakeCase } from '../utils/caseConverter';
 
 interface AppContextType {
   bloodRequests: BloodRequest[];
   donations: Donation[];
   messages: Message[];
   achievements: Achievement[];
-  addBloodRequest: (request: Omit<BloodRequest, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateBloodRequest: (id: string, updates: Partial<BloodRequest>) => void;
-  addDonation: (donation: Omit<Donation, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateDonation: (id: string, updates: Partial<Donation>) => void;
-  sendMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
-  markMessageAsRead: (messageId: string) => void;
-  getMatchingDonors: (request: BloodRequest) => any[];
+  addBloodRequest: (request: Omit<BloodRequest, 'id' | 'createdAt' | 'updatedAt' | 'requesterId'>) => Promise<void>;
+  updateBloodRequest: (id: string, updates: Partial<BloodRequest>) => Promise<void>;
+  addDonation: (donation: Omit<Donation, 'id' | 'createdAt' | 'updatedAt' | 'donorId'>) => Promise<void>;
+  updateDonation: (id: string, updates: Partial<Donation>) => Promise<void>;
+  sendMessage: (message: Omit<Message, 'id' | 'timestamp' | 'senderId'>) => Promise<void>;
+  markMessageAsRead: (messageId: string) => Promise<void>;
+  getMatchingDonors: (request: BloodRequest) => Promise<User[]>;
   getRequestsForDonor: (userId: string, bloodType: string) => BloodRequest[];
 }
 
@@ -27,183 +30,129 @@ export const useApp = () => {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [achievements] = useState<Achievement[]>([
-    {
-      id: '1',
-      name: 'First Drop',
-      description: 'Complete your first blood donation',
-      icon: '🩸',
-      threshold: 1,
-      category: 'donations',
-    },
-    {
-      id: '2',
-      name: 'Life Saver',
-      description: 'Complete 5 blood donations',
-      icon: '🏆',
-      threshold: 5,
-      category: 'donations',
-    },
-    {
-      id: '3',
-      name: 'Hero',
-      description: 'Complete 10 blood donations',
-      icon: '🦸',
-      threshold: 10,
-      category: 'donations',
-    },
-  ]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   useEffect(() => {
-    // Initialize with mock data
-    const mockRequests: BloodRequest[] = [
-      {
-        id: '1',
-        requesterId: '2',
-        patientName: 'Rajesh Kumar',
-        patientAge: 45,
-        patientBloodType: 'O+',
-        medicalCondition: 'Emergency surgery required',
-        urgencyLevel: 'critical',
-        unitsRequired: 3,
-        unitsFulfilled: 1,
-        hospitalName: 'Apollo Hospital',
-        hospitalAddress: 'Bannerghatta Road, Bangalore',
-        hospitalContact: '+91-80-26304050',
-        requiredByDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        specialRequirements: 'CMV negative preferred',
-        status: 'partial',
-        contactPerson: 'Dr. Priya Sharma',
-        contactNumber: '+91-9876543210',
-        districtId: '3232',
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        coordinates: { lat: 12.9051, lng: 77.5960 },
-      },
-      {
-        id: '2',
-        requesterId: '3',
-        patientName: 'Meera Patel',
-        patientAge: 28,
-        patientBloodType: 'A+',
-        medicalCondition: 'Post-partum complications',
-        urgencyLevel: 'urgent',
-        unitsRequired: 2,
-        unitsFulfilled: 0,
-        hospitalName: 'Fortis Hospital',
-        hospitalAddress: 'Cunningham Road, Bangalore',
-        hospitalContact: '+91-80-66214444',
-        requiredByDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
-        specialRequirements: 'None',
-        status: 'active',
-        contactPerson: 'Nurse Anjali',
-        contactNumber: '+91-9876543211',
-        districtId: '3232',
-        createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        coordinates: { lat: 12.9698, lng: 77.5986 },
-      },
-    ];
+    if (user) {
+      fetchInitialData();
+      const subscriptions = [
+        subscribeToTable('blood_requests', (payload) => setBloodRequests(current => [...current, toCamelCase(payload.new) as BloodRequest])),
+        subscribeToTable('donations', (payload) => setDonations(current => [...current, toCamelCase(payload.new) as Donation])),
+        subscribeToMessages(),
+      ];
+      return () => {
+        subscriptions.forEach(sub => sub.unsubscribe());
+      };
+    }
+  }, [user]);
 
-    setBloodRequests(mockRequests);
-  }, []);
+  const fetchInitialData = async () => {
+    const [requestsRes, donationsRes, messagesRes, achievementsRes] = await Promise.all([
+      supabase.from('blood_requests').select('*'),
+      supabase.from('donations').select('*'),
+      supabase.from('messages').select('*').or(`sender_id.eq.${user?.id},receiver_id.eq.${user?.id}`),
+      supabase.from('achievements').select('*'),
+    ]);
 
-  const addBloodRequest = (requestData: Omit<BloodRequest, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newRequest: BloodRequest = {
-      ...requestData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setBloodRequests(prev => [...prev, newRequest]);
+    if (requestsRes.error) console.error('Error fetching blood requests', requestsRes.error);
+    else setBloodRequests(toCamelCase(requestsRes.data) as BloodRequest[]);
+
+    if (donationsRes.error) console.error('Error fetching donations', donationsRes.error);
+    else setDonations(toCamelCase(donationsRes.data) as Donation[]);
+
+    if (messagesRes.error) console.error('Error fetching messages', messagesRes.error);
+    else setMessages(toCamelCase(messagesRes.data) as Message[]);
+
+    if (achievementsRes.error) console.error('Error fetching achievements', achievementsRes.error);
+    else setAchievements(toCamelCase(achievementsRes.data) as Achievement[]);
   };
 
-  const updateBloodRequest = (id: string, updates: Partial<BloodRequest>) => {
-    setBloodRequests(prev => prev.map(request => 
-      request.id === id 
-        ? { ...request, ...updates, updatedAt: new Date().toISOString() }
-        : request
-    ));
+  const subscribeToTable = (table: string, onInsert: (payload: any) => void) => {
+    return supabase.channel(`public:${table}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table }, onInsert)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table }, () => fetchInitialData())
+      .subscribe();
   };
 
-  const addDonation = (donationData: Omit<Donation, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newDonation: Donation = {
-      ...donationData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setDonations(prev => [...prev, newDonation]);
+  const subscribeToMessages = () => {
+    return supabase.channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        if(payload.new.receiver_id === user?.id || payload.new.sender_id === user?.id) {
+          setMessages(current => [...current, toCamelCase(payload.new) as Message]);
+        }
+      })
+      .subscribe();
   };
 
-  const updateDonation = (id: string, updates: Partial<Donation>) => {
-    setDonations(prev => prev.map(donation => 
-      donation.id === id 
-        ? { ...donation, ...updates, updatedAt: new Date().toISOString() }
-        : donation
-    ));
+  const addBloodRequest = async (requestData: Omit<BloodRequest, 'id' | 'createdAt' | 'updatedAt' | 'requesterId'>) => {
+    if (!user) throw new Error("User not authenticated");
+    const snakeCaseData = toSnakeCase({ ...requestData, requesterId: user.id });
+    const { error } = await supabase.from('blood_requests').insert(snakeCaseData);
+    if (error) console.error('Error adding blood request:', error);
   };
 
-  const sendMessage = (messageData: Omit<Message, 'id' | 'timestamp'>) => {
-    const newMessage: Message = {
-      ...messageData,
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toISOString(),
-    };
-    setMessages(prev => [...prev, newMessage]);
+  const updateBloodRequest = async (id: string, updates: Partial<BloodRequest>) => {
+    const { error } = await supabase.from('blood_requests').update(toSnakeCase(updates)).eq('id', id);
+    if (error) console.error('Error updating blood request:', error);
   };
 
-  const markMessageAsRead = (messageId: string) => {
-    setMessages(prev => prev.map(message => 
-      message.id === messageId ? { ...message, isRead: true } : message
-    ));
+  const addDonation = async (donationData: Omit<Donation, 'id' | 'createdAt' | 'updatedAt' | 'donorId'>) => {
+    if (!user) throw new Error("User not authenticated");
+    const snakeCaseData = toSnakeCase({ ...donationData, donorId: user.id });
+    const { error } = await supabase.from('donations').insert(snakeCaseData);
+    if (error) console.error('Error adding donation:', error);
+  };
+
+  const updateDonation = async (id: string, updates: Partial<Donation>) => {
+    const { error } = await supabase.from('donations').update(toSnakeCase(updates)).eq('id', id);
+    if (error) console.error('Error updating donation:', error);
+  };
+
+  const sendMessage = async (messageData: Omit<Message, 'id' | 'timestamp' | 'senderId'>) => {
+    if (!user) throw new Error("User not authenticated");
+    const snakeCaseData = toSnakeCase({ ...messageData, senderId: user.id });
+    const { error } = await supabase.from('messages').insert(snakeCaseData);
+    if (error) console.error('Error sending message:', error);
+  };
+
+  const markMessageAsRead = async (messageId: string) => {
+    const { error } = await supabase.from('messages').update({ is_read: true }).eq('id', messageId);
+    if (error) console.error('Error marking message as read:', error);
   };
 
   const getCompatibleBloodTypes = (patientType: string): string[] => {
     const compatibility: { [key: string]: string[] } = {
-      'A+': ['A+', 'A-', 'O+', 'O-'],
-      'A-': ['A-', 'O-'],
-      'B+': ['B+', 'B-', 'O+', 'O-'],
-      'B-': ['B-', 'O-'],
+      'A+': ['A+', 'A-', 'O+', 'O-'], 'A-': ['A-', 'O-'],
+      'B+': ['B+', 'B-', 'O+', 'O-'], 'B-': ['B-', 'O-'],
       'AB+': ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
-      'AB-': ['A-', 'B-', 'AB-', 'O-'],
-      'O+': ['O+', 'O-'],
-      'O-': ['O-'],
+      'AB-': ['A-', 'B-', 'AB-', 'O-'], 'O+': ['O+', 'O-'], 'O-': ['O-'],
     };
     return compatibility[patientType] || [];
   };
 
-  const getMatchingDonors = (request: BloodRequest) => {
+  const getMatchingDonors = async (request: BloodRequest): Promise<User[]> => {
     const compatibleTypes = getCompatibleBloodTypes(request.patientBloodType);
-    // Mock donor data - in real app, this would query the database
-    return [
-      {
-        id: '1',
-        name: 'John Smith',
-        bloodType: 'O+',
-        distance: 2.5,
-        lastDonation: '2024-01-15',
-        totalDonations: 5,
-        clubName: 'Bangalore Central',
-        verificationStatus: 'verified',
-      },
-      {
-        id: '4',
-        name: 'Sarah Johnson',
-        bloodType: 'O-',
-        distance: 3.8,
-        lastDonation: '2023-12-10',
-        totalDonations: 3,
-        clubName: 'Koramangala Rotary',
-        verificationStatus: 'verified',
-      },
-    ].filter(donor => compatibleTypes.includes(donor.bloodType));
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    const { data, error } = await supabase.from('users')
+      .select('*')
+      .in('blood_type', compatibleTypes)
+      .or(`last_donation_date.is.null,last_donation_date.lte.${threeMonthsAgo.toISOString()}`)
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('Error fetching matching donors:', error);
+      return [];
+    }
+    return toCamelCase(data) as User[];
   };
 
-  const getRequestsForDonor = (userId: string, bloodType: string) => {
+  const getRequestsForDonor = (userId: string, bloodType: string): BloodRequest[] => {
     return bloodRequests.filter(request => {
       const compatibleTypes = getCompatibleBloodTypes(request.patientBloodType);
       return compatibleTypes.includes(bloodType) && request.status === 'active';

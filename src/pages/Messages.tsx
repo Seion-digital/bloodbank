@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabaseClient';
 import { useApp } from '../context/AppContext';
 import { 
   MessageCircle, 
@@ -9,194 +11,143 @@ import {
   Video,
   MoreVertical,
   Heart,
-  User,
   Clock
 } from 'lucide-react';
+import { User } from '../types';
 
 export const Messages: React.FC = () => {
   const { user } = useAuth();
-  const { messages, sendMessage } = useApp();
+  const { messages, sendMessage, markMessageAsRead } = useApp();
   
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [users, setUsers] = useState<{[key: string]: User}>({}); // To cache user profiles
 
-  // Mock conversations data
-  const conversations = [
-    {
-      id: '1',
-      participantId: '2',
-      participantName: 'Sarah Johnson',
-      participantType: 'donor',
-      lastMessage: 'I can donate tomorrow morning at Apollo Hospital',
-      lastMessageTime: '2024-01-20T10:30:00Z',
-      unreadCount: 2,
-      isOnline: true,
-      requestId: 'req-1',
-      requestType: 'O+ blood needed'
-    },
-    {
-      id: '2',
-      participantId: '3',
-      participantName: 'Dr. Rajesh Kumar',
-      participantType: 'medical',
-      lastMessage: 'The patient is stable. Thank you for your quick response.',
-      lastMessageTime: '2024-01-20T09:15:00Z',
-      unreadCount: 0,
-      isOnline: false,
-      requestId: 'req-2',
-      requestType: 'Emergency A+ request'
-    },
-    {
-      id: '3',
-      participantId: '4',
-      participantName: 'Rotary Club Admin',
-      participantType: 'admin',
-      lastMessage: 'Your donation has been verified and recorded.',
-      lastMessageTime: '2024-01-19T16:45:00Z',
-      unreadCount: 0,
-      isOnline: true,
-      requestId: null,
-      requestType: 'System notification'
+  useEffect(() => {
+    const recipientId = searchParams.get('recipient');
+    if (recipientId) {
+      setSelectedConversationId(recipientId);
     }
-  ];
+  }, [searchParams]);
 
-  // Mock messages for selected conversation
-  const conversationMessages = [
-    {
-      id: '1',
-      senderId: '2',
-      receiverId: user?.id || '1',
-      content: 'Hi! I saw your blood request and I can help.',
-      timestamp: '2024-01-20T10:00:00Z',
-      isRead: true
-    },
-    {
-      id: '2',
-      senderId: user?.id || '1',
-      receiverId: '2',
-      content: 'Thank you so much! When would be convenient for you?',
-      timestamp: '2024-01-20T10:05:00Z',
-      isRead: true
-    },
-    {
-      id: '3',
-      senderId: '2',
-      receiverId: user?.id || '1',
-      content: 'I can donate tomorrow morning at Apollo Hospital',
-      timestamp: '2024-01-20T10:30:00Z',
-      isRead: false
+  const conversations = useMemo(() => {
+    const convs: { [key: string]: any } = {};
+    messages.forEach(msg => {
+      const otherPartyId = msg.senderId === user?.id ? msg.receiverId : msg.senderId;
+      if (!convs[otherPartyId]) {
+        convs[otherPartyId] = {
+          id: otherPartyId,
+          participantId: otherPartyId,
+          lastMessage: msg.content,
+          lastMessageTime: msg.timestamp,
+          unreadCount: 0,
+        };
+      }
+      if (!msg.isRead && msg.receiverId === user?.id) {
+        convs[otherPartyId].unreadCount++;
+      }
+      if (new Date(msg.timestamp) > new Date(convs[otherPartyId].lastMessageTime)) {
+        convs[otherPartyId].lastMessage = msg.content;
+        convs[otherPartyId].lastMessageTime = msg.timestamp;
+      }
+    });
+    return Object.values(convs).sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime());
+  }, [messages, user?.id]);
+
+  useEffect(() => {
+    const fetchUserProfiles = async () => {
+      const userIds = conversations.map(c => c.participantId).filter(id => !users[id]);
+      if (userIds.length === 0) return;
+
+      const { data, error } = await supabase.from('users').select('*').in('id', userIds);
+
+      if (error) {
+        console.error("Error fetching user profiles for messages:", error);
+      } else {
+        const newUsers = data.reduce((acc, user) => {
+          acc[user.id] = user;
+          return acc;
+        }, {} as {[key: string]: User});
+        setUsers(prev => ({ ...prev, ...newUsers }));
+      }
+    };
+
+    if (conversations.length > 0) {
+      fetchUserProfiles();
     }
-  ];
+  }, [conversations]);
 
-  const handleSendMessage = () => {
-    if (newMessage.trim() && selectedConversation) {
+  const selectedConversationMessages = useMemo(() => {
+    if (!selectedConversationId) return [];
+    return messages.filter(
+      msg =>
+        (msg.senderId === user?.id && msg.receiverId === selectedConversationId) ||
+        (msg.senderId === selectedConversationId && msg.receiverId === user?.id)
+    ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }, [messages, selectedConversationId, user?.id]);
+
+  const handleSendMessage = async () => {
+    if (newMessage.trim() && selectedConversationId) {
       const messageData = {
-        senderId: user?.id || '',
-        receiverId: selectedConversation,
-        requestId: 'req-1',
+        receiverId: selectedConversationId,
         content: newMessage,
-        isRead: false
+        // This is a simplification. In a real app, you'd associate the message with a specific request.
+        requestId: messages.find(m => m.senderId === selectedConversationId || m.receiverId === selectedConversationId)?.requestId || '',
       };
-      
-      sendMessage(messageData);
+      await sendMessage(messageData);
       setNewMessage('');
     }
   };
 
+  const handleSelectConversation = (id: string) => {
+    setSelectedConversationId(id);
+    // Mark messages as read
+    selectedConversationMessages.forEach(msg => {
+      if (!msg.isRead && msg.receiverId === user?.id) {
+        markMessageAsRead(msg.id);
+      }
+    });
+  };
+
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 1) {
-      return 'Just now';
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const filteredConversations = conversations.filter(conv =>
-    conv.participantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conv.requestType.toLowerCase().includes(searchTerm.toLowerCase())
+    users[conv.participantId]?.fullName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const selectedConversationData = conversations.find(conv => conv.id === selectedConversation);
+  const selectedConversationUserData = selectedConversationId ? users[selectedConversationId] : null;
 
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-200px)]">
       <div className="bg-white rounded-xl shadow-lg overflow-hidden h-full flex">
         {/* Conversations List */}
         <div className="w-1/3 border-r border-gray-200 flex flex-col">
-          {/* Header */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-blue-100 p-2 rounded-full">
-                <MessageCircle className="h-6 w-6 text-blue-600" />
-              </div>
-              <h1 className="text-xl font-semibold text-gray-900">Messages</h1>
-            </div>
-            
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search conversations..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Conversations List */}
+          {/* ... Header and Search ... */}
           <div className="flex-1 overflow-y-auto">
             {filteredConversations.map((conversation) => (
               <div
                 key={conversation.id}
-                onClick={() => setSelectedConversation(conversation.id)}
+                onClick={() => handleSelectConversation(conversation.id)}
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedConversation === conversation.id ? 'bg-blue-50 border-blue-200' : ''
+                  selectedConversationId === conversation.id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
                 <div className="flex items-start space-x-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white font-semibold">
-                      {conversation.participantName.charAt(0)}
-                    </div>
-                    {conversation.isOnline && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-                    )}
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white font-semibold">
+                    {users[conversation.participantId]?.fullName.charAt(0)}
                   </div>
-                  
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-gray-900 truncate">
-                        {conversation.participantName}
-                      </h3>
-                      <span className="text-xs text-gray-500">
-                        {formatTime(conversation.lastMessageTime)}
-                      </span>
-                    </div>
-                    
-                    <p className="text-xs text-blue-600 mb-1">
-                      {conversation.requestType}
-                    </p>
-                    
+                    <h3 className="text-sm font-semibold text-gray-900 truncate">
+                      {users[conversation.participantId]?.fullName}
+                    </h3>
                     <p className="text-sm text-gray-600 truncate">
                       {conversation.lastMessage}
                     </p>
-                    
-                    {conversation.unreadCount > 0 && (
-                      <div className="flex justify-end mt-1">
-                        <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-medium text-white bg-red-500 rounded-full">
-                          {conversation.unreadCount}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -206,75 +157,29 @@ export const Messages: React.FC = () => {
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col">
-          {selectedConversation ? (
+          {selectedConversationId ? (
             <>
               {/* Chat Header */}
               <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white font-semibold">
-                        {selectedConversationData?.participantName.charAt(0)}
-                      </div>
-                      {selectedConversationData?.isOnline && (
-                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                      )}
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        {selectedConversationData?.participantName}
-                      </h2>
-                      <p className="text-sm text-gray-500">
-                        {selectedConversationData?.isOnline ? 'Online' : 'Offline'} • {selectedConversationData?.requestType}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                      <Phone className="h-5 w-5" />
-                    </button>
-                    <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                      <Video className="h-5 w-5" />
-                    </button>
-                    <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                      <MoreVertical className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {selectedConversationUserData?.fullName}
+                </h2>
               </div>
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {conversationMessages.map((message) => {
+                {selectedConversationMessages.map((message) => {
                   const isOwnMessage = message.senderId === user?.id;
-                  
                   return (
                     <div
                       key={message.id}
                       className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className="flex items-end space-x-2 max-w-xs lg:max-w-md">
-                        {!isOwnMessage && (
-                          <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                            {selectedConversationData?.participantName.charAt(0)}
-                          </div>
-                        )}
-                        
-                        <div
-                          className={`px-4 py-2 rounded-2xl ${
-                            isOwnMessage
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-200 text-gray-900'
-                          }`}
-                        >
-                          <p className="text-sm">{message.content}</p>
-                          <p className={`text-xs mt-1 ${
-                            isOwnMessage ? 'text-blue-200' : 'text-gray-500'
-                          }`}>
-                            {formatTime(message.timestamp)}
-                          </p>
-                        </div>
+                      <div className={`px-4 py-2 rounded-2xl ${isOwnMessage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-900'}`}>
+                        <p className="text-sm">{message.content}</p>
+                        <p className={`text-xs mt-1 ${isOwnMessage ? 'text-blue-200' : 'text-gray-500'}`}>
+                          {formatTime(message.timestamp)}
+                        </p>
                       </div>
                     </div>
                   );
@@ -284,16 +189,14 @@ export const Messages: React.FC = () => {
               {/* Message Input */}
               <div className="p-6 border-t border-gray-200">
                 <div className="flex items-center space-x-4">
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      placeholder="Type your message..."
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Type your message..."
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
                   <button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim()}
@@ -302,31 +205,13 @@ export const Messages: React.FC = () => {
                     <Send className="h-5 w-5" />
                   </button>
                 </div>
-                
-                {/* Quick Actions */}
-                <div className="flex items-center space-x-4 mt-4">
-                  <button className="flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm hover:bg-red-200 transition-colors">
-                    <Heart className="h-4 w-4" />
-                    <span>Accept Donation</span>
-                  </button>
-                  <button className="flex items-center space-x-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200 transition-colors">
-                    <Clock className="h-4 w-4" />
-                    <span>Schedule Meeting</span>
-                  </button>
-                </div>
               </div>
             </>
           ) : (
-            // No conversation selected
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MessageCircle className="h-8 w-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a conversation</h3>
-                <p className="text-gray-600">
-                  Choose a conversation from the list to start messaging
-                </p>
+                <MessageCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Select a conversation</h3>
               </div>
             </div>
           )}
