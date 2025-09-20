@@ -10,29 +10,29 @@ export const RegisterForm: React.FC = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    full_name: '',
-    date_of_birth: '',
+    fullName: '',
+    dateOfBirth: '',
     gender: 'male' as 'male' | 'female' | 'other',
-    blood_type: 'O+' as BloodType,
+    bloodType: 'O+' as BloodType,
     weight: '',
-    medical_conditions: '',
-    user_type: 'public' as UserType,
-    club_name: '',
-    member_id: '',
-    district_id: '3232',
+    medicalConditions: '',
+    userType: 'public' as UserType,
+    clubName: '',
+    memberId: '',
+    districtId: '3232',
     address: '',
     city: '',
     state: '',
-    emergency_contact: '',
-    preferred_hospital: ''
+    emergencyContact: '',
+    preferredHospital: ''
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -67,11 +67,11 @@ export const RegisterForm: React.FC = () => {
   };
 
   const validateStep2 = () => {
-    if (!formData.full_name || !formData.date_of_birth || !formData.blood_type) {
+    if (!formData.fullName || !formData.dateOfBirth || !formData.bloodType) {
       setError('Please fill in all required fields');
       return false;
     }
-    if (formData.user_type !== 'public' && !formData.club_name) {
+    if (formData.userType !== 'public' && !formData.clubName) {
       setError('Club name is required for Rotary members');
       return false;
     }
@@ -93,26 +93,7 @@ export const RegisterForm: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const success = await register({
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password,
-        full_name: formData.full_name,
-        date_of_birth: formData.date_of_birth,
-        gender: formData.gender,
-        blood_type: formData.blood_type,
-        weight: parseInt(formData.weight) || 0,
-        medical_conditions: formData.medical_conditions,
-        user_type: formData.user_type,
-        club_name: formData.club_name,
-        member_id: formData.member_id,
-        district_id: formData.district_id,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        emergency_contact: formData.emergency_contact,
-        preferred_hospital: formData.preferred_hospital,
-      });
+      const success = await register(formData);
       if (success) {
         navigate('/dashboard');
       } else {
@@ -129,7 +110,7 @@ export const RegisterForm: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
-        
+
         <div className="grid grid-cols-1 gap-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -229,20 +210,20 @@ export const RegisterForm: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
-        
+
         <div className="grid grid-cols-1 gap-4">
           <div>
-            <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
               Full Name *
             </label>
             <div className="mt-1 relative">
               <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
-                id="full_name"
-                name="full_name"
+                id="fullName"
+                name="fullName"
                 type="text"
                 required
-                value={formData.full_name}
+                value={formData.fullName}
                 onChange={handleInputChange}
                 className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 placeholder="Enter your full name"
@@ -252,15 +233,15 @@ export const RegisterForm: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
                 Date of Birth *
               </label>
               <input
-                id="date_of_birth"
-                name="date_of_birth"
+                id="dateOfBirth"
+                name="dateOfBirth"
                 type="date"
                 required
-                value={formData.date_of_birth}
+                value={formData.dateOfBirth}
                 onChange={handleInputChange}
                 className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               />
@@ -287,14 +268,14 @@ export const RegisterForm: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="blood_type" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="bloodType" className="block text-sm font-medium text-gray-700">
                 Blood Type *
               </label>
               <select
-                id="blood_type"
-                name="blood_type"
+                id="bloodType"
+                name="bloodType"
                 required
-                value={formData.blood_type}
+                value={formData.bloodType}
                 onChange={handleInputChange}
                 className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               >
@@ -323,14 +304,14 @@ export const RegisterForm: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="user_type" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="userType" className="block text-sm font-medium text-gray-700">
               User Type *
             </label>
             <select
-              id="user_type"
-              name="user_type"
+              id="userType"
+              name="userType"
               required
-              value={formData.user_type}
+              value={formData.userType}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
             >
@@ -341,20 +322,20 @@ export const RegisterForm: React.FC = () => {
             </select>
           </div>
 
-          {(formData.user_type === 'rotaractor' || formData.user_type === 'rotary') && (
+          {(formData.userType === 'rotaractor' || formData.userType === 'rotary') && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="club_name" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="clubName" className="block text-sm font-medium text-gray-700">
                   Club Name *
                 </label>
                 <div className="mt-1 relative">
                   <Building className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   <input
-                    id="club_name"
-                    name="club_name"
+                    id="clubName"
+                    name="clubName"
                     type="text"
                     required
-                    value={formData.club_name}
+                    value={formData.clubName}
                     onChange={handleInputChange}
                     className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Enter club name"
@@ -363,14 +344,14 @@ export const RegisterForm: React.FC = () => {
               </div>
 
               <div>
-                <label htmlFor="member_id" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="memberId" className="block text-sm font-medium text-gray-700">
                   Member ID
                 </label>
                 <input
-                  id="member_id"
-                  name="member_id"
+                  id="memberId"
+                  name="memberId"
                   type="text"
-                  value={formData.member_id}
+                  value={formData.memberId}
                   onChange={handleInputChange}
                   className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Member ID"
@@ -380,14 +361,14 @@ export const RegisterForm: React.FC = () => {
           )}
 
           <div>
-            <label htmlFor="district_id" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="districtId" className="block text-sm font-medium text-gray-700">
               Rotary District *
             </label>
             <select
-              id="district_id"
-              name="district_id"
+              id="districtId"
+              name="districtId"
               required
-              value={formData.district_id}
+              value={formData.districtId}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
             >
@@ -405,7 +386,7 @@ export const RegisterForm: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Location & Emergency Information</h3>
-        
+
         <div className="grid grid-cols-1 gap-4">
           <div>
             <label htmlFor="address" className="block text-sm font-medium text-gray-700">
@@ -458,16 +439,16 @@ export const RegisterForm: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="emergency_contact" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="emergencyContact" className="block text-sm font-medium text-gray-700">
               Emergency Contact
             </label>
             <div className="mt-1 relative">
               <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
-                id="emergency_contact"
-                name="emergency_contact"
+                id="emergencyContact"
+                name="emergencyContact"
                 type="tel"
-                value={formData.emergency_contact}
+                value={formData.emergencyContact}
                 onChange={handleInputChange}
                 className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 placeholder="Emergency contact number"
@@ -476,14 +457,14 @@ export const RegisterForm: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="preferred_hospital" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="preferredHospital" className="block text-sm font-medium text-gray-700">
               Preferred Hospital
             </label>
             <input
-              id="preferred_hospital"
-              name="preferred_hospital"
+              id="preferredHospital"
+              name="preferredHospital"
               type="text"
-              value={formData.preferred_hospital}
+              value={formData.preferredHospital}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               placeholder="Preferred hospital name"
@@ -491,14 +472,14 @@ export const RegisterForm: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="medical_conditions" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="medicalConditions" className="block text-sm font-medium text-gray-700">
               Medical Conditions (if any)
             </label>
             <textarea
-              id="medical_conditions"
-              name="medical_conditions"
+              id="medicalConditions"
+              name="medicalConditions"
               rows={3}
-              value={formData.medical_conditions}
+              value={formData.medicalConditions}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               placeholder="Any medical conditions, allergies, or medications"

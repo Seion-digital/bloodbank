@@ -16,7 +16,7 @@ export interface User {
   address: string;
   city: string;
   state: string;
-  coordinates: { lat: number; lng: number };
+  coordinates: { lat: number; lng: number } | null;
   emergency_contact: string;
   preferred_hospital: string;
   last_donation_date: string | null;
