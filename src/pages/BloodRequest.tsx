@@ -9,9 +9,7 @@ import {
   MapPin, 
   Phone, 
   AlertTriangle,
-  Clock,
   Building,
-  FileText
 } from 'lucide-react';
 import { BloodType, UrgencyLevel } from '../types';
 
@@ -21,19 +19,19 @@ export const BloodRequest: React.FC = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    patientName: '',
-    patientAge: '',
-    patientBloodType: 'O+' as BloodType,
-    medicalCondition: '',
-    urgencyLevel: 'regular' as UrgencyLevel,
-    unitsRequired: '',
-    hospitalName: '',
-    hospitalAddress: '',
-    hospitalContact: '',
-    requiredByDate: '',
-    specialRequirements: '',
-    contactPerson: '',
-    contactNumber: user?.phone || '',
+    patient_name: '',
+    patient_age: '',
+    patient_blood_type: 'O+' as BloodType,
+    medical_condition: '',
+    urgency_level: 'regular' as UrgencyLevel,
+    units_required: '',
+    hospital_name: '',
+    hospital_address: '',
+    hospital_contact: '',
+    required_by_date: '',
+    special_requirements: '',
+    contact_person: '',
+    contact_number: user?.phone || '',
   });
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -56,28 +54,29 @@ export const BloodRequest: React.FC = () => {
     setIsLoading(true);
 
     try {
+      if(!user) throw new Error("User not authenticated");
+
       const requestData = {
-        requesterId: user?.id || '',
-        patientName: formData.patientName,
-        patientAge: parseInt(formData.patientAge),
-        patientBloodType: formData.patientBloodType,
-        medicalCondition: formData.medicalCondition,
-        urgencyLevel: formData.urgencyLevel,
-        unitsRequired: parseInt(formData.unitsRequired),
-        unitsFulfilled: 0,
-        hospitalName: formData.hospitalName,
-        hospitalAddress: formData.hospitalAddress,
-        hospitalContact: formData.hospitalContact,
-        requiredByDate: formData.requiredByDate,
-        specialRequirements: formData.specialRequirements,
+        patient_name: formData.patient_name,
+        patient_age: parseInt(formData.patient_age),
+        patient_blood_type: formData.patient_blood_type,
+        medical_condition: formData.medical_condition,
+        urgency_level: formData.urgency_level,
+        units_required: parseInt(formData.units_required),
+        units_fulfilled: 0,
+        hospital_name: formData.hospital_name,
+        hospital_address: formData.hospital_address,
+        hospital_contact: formData.hospital_contact,
+        required_by_date: formData.required_by_date,
+        special_requirements: formData.special_requirements,
         status: 'active' as const,
-        contactPerson: formData.contactPerson,
-        contactNumber: formData.contactNumber,
-        districtId: user?.districtId || '3232',
+        contact_person: formData.contact_person,
+        contact_number: formData.contact_number,
+        district_id: user.district_id || '3232',
         coordinates: { lat: 12.9716, lng: 77.5946 }
       };
 
-      addBloodRequest(requestData);
+      await addBloodRequest(requestData);
       navigate('/my-requests');
     } catch (error) {
       console.error('Error creating blood request:', error);
@@ -96,15 +95,15 @@ export const BloodRequest: React.FC = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="patientName" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="patient_name" className="block text-sm font-medium text-gray-700">
               Patient Name *
             </label>
             <input
-              id="patientName"
-              name="patientName"
+              id="patient_name"
+              name="patient_name"
               type="text"
               required
-              value={formData.patientName}
+              value={formData.patient_name}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               placeholder="Enter patient's full name"
@@ -112,17 +111,17 @@ export const BloodRequest: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="patientAge" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="patient_age" className="block text-sm font-medium text-gray-700">
               Patient Age *
             </label>
             <input
-              id="patientAge"
-              name="patientAge"
+              id="patient_age"
+              name="patient_age"
               type="number"
               min="1"
               max="120"
               required
-              value={formData.patientAge}
+              value={formData.patient_age}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               placeholder="Age"
@@ -130,14 +129,14 @@ export const BloodRequest: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="patientBloodType" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="patient_blood_type" className="block text-sm font-medium text-gray-700">
               Blood Type Required *
             </label>
             <select
-              id="patientBloodType"
-              name="patientBloodType"
+              id="patient_blood_type"
+              name="patient_blood_type"
               required
-              value={formData.patientBloodType}
+              value={formData.patient_blood_type}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
             >
@@ -148,17 +147,17 @@ export const BloodRequest: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="unitsRequired" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="units_required" className="block text-sm font-medium text-gray-700">
               Units Required *
             </label>
             <input
-              id="unitsRequired"
-              name="unitsRequired"
+              id="units_required"
+              name="units_required"
               type="number"
               min="1"
               max="10"
               required
-              value={formData.unitsRequired}
+              value={formData.units_required}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               placeholder="Number of units"
@@ -166,15 +165,15 @@ export const BloodRequest: React.FC = () => {
           </div>
 
           <div className="md:col-span-2">
-            <label htmlFor="medicalCondition" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="medical_condition" className="block text-sm font-medium text-gray-700">
               Medical Condition *
             </label>
             <textarea
-              id="medicalCondition"
-              name="medicalCondition"
+              id="medical_condition"
+              name="medical_condition"
               required
               rows={3}
-              value={formData.medicalCondition}
+              value={formData.medical_condition}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               placeholder="Describe the medical condition requiring blood transfusion"
@@ -203,9 +202,9 @@ export const BloodRequest: React.FC = () => {
                 <label key={level.value} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                   <input
                     type="radio"
-                    name="urgencyLevel"
+                    name="urgency_level"
                     value={level.value}
-                    checked={formData.urgencyLevel === level.value}
+                    checked={formData.urgency_level === level.value}
                     onChange={handleInputChange}
                     className="h-4 w-4 text-red-600 focus:ring-red-500"
                   />
@@ -220,17 +219,17 @@ export const BloodRequest: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="requiredByDate" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="required_by_date" className="block text-sm font-medium text-gray-700">
               Required By Date & Time *
             </label>
             <div className="mt-1 relative">
               <Calendar className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
-                id="requiredByDate"
-                name="requiredByDate"
+                id="required_by_date"
+                name="required_by_date"
                 type="datetime-local"
                 required
-                value={formData.requiredByDate}
+                value={formData.required_by_date}
                 onChange={handleInputChange}
                 className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               />
@@ -238,14 +237,14 @@ export const BloodRequest: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="specialRequirements" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="special_requirements" className="block text-sm font-medium text-gray-700">
               Special Requirements
             </label>
             <textarea
-              id="specialRequirements"
-              name="specialRequirements"
+              id="special_requirements"
+              name="special_requirements"
               rows={3}
-              value={formData.specialRequirements}
+              value={formData.special_requirements}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               placeholder="Any special requirements (CMV negative, HLA matched, etc.)"
@@ -266,15 +265,15 @@ export const BloodRequest: React.FC = () => {
         
         <div className="space-y-6">
           <div>
-            <label htmlFor="hospitalName" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="hospital_name" className="block text-sm font-medium text-gray-700">
               Hospital Name *
             </label>
             <input
-              id="hospitalName"
-              name="hospitalName"
+              id="hospital_name"
+              name="hospital_name"
               type="text"
               required
-              value={formData.hospitalName}
+              value={formData.hospital_name}
               onChange={handleInputChange}
               className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               placeholder="Hospital or medical facility name"
@@ -282,17 +281,17 @@ export const BloodRequest: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="hospitalAddress" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="hospital_address" className="block text-sm font-medium text-gray-700">
               Hospital Address *
             </label>
             <div className="mt-1 relative">
               <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <textarea
-                id="hospitalAddress"
-                name="hospitalAddress"
+                id="hospital_address"
+                name="hospital_address"
                 required
                 rows={3}
-                value={formData.hospitalAddress}
+                value={formData.hospital_address}
                 onChange={handleInputChange}
                 className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 placeholder="Complete hospital address with landmarks"
@@ -301,17 +300,17 @@ export const BloodRequest: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="hospitalContact" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="hospital_contact" className="block text-sm font-medium text-gray-700">
               Hospital Contact Number *
             </label>
             <div className="mt-1 relative">
               <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
-                id="hospitalContact"
-                name="hospitalContact"
+                id="hospital_contact"
+                name="hospital_contact"
                 type="tel"
                 required
-                value={formData.hospitalContact}
+                value={formData.hospital_contact}
                 onChange={handleInputChange}
                 className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 placeholder="Hospital main contact number"
@@ -321,15 +320,15 @@ export const BloodRequest: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="contactPerson" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="contact_person" className="block text-sm font-medium text-gray-700">
                 Contact Person *
               </label>
               <input
-                id="contactPerson"
-                name="contactPerson"
+                id="contact_person"
+                name="contact_person"
                 type="text"
                 required
-                value={formData.contactPerson}
+                value={formData.contact_person}
                 onChange={handleInputChange}
                 className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 placeholder="Primary contact person name"
@@ -337,17 +336,17 @@ export const BloodRequest: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="contactNumber" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="contact_number" className="block text-sm font-medium text-gray-700">
                 Contact Number *
               </label>
               <div className="mt-1 relative">
                 <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
-                  id="contactNumber"
-                  name="contactNumber"
+                  id="contact_number"
+                  name="contact_number"
                   type="tel"
                   required
-                  value={formData.contactNumber}
+                  value={formData.contact_number}
                   onChange={handleInputChange}
                   className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Your contact number"

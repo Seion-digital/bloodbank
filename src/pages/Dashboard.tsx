@@ -6,27 +6,34 @@ import {
   Users, 
   MapPin, 
   Calendar, 
-  TrendingUp, 
   AlertTriangle,
   Award,
   Clock,
   CheckCircle,
   MessageCircle
 } from 'lucide-react';
-import { BloodRequest } from '../types';
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const { bloodRequests, donations, getRequestsForDonor } = useApp();
+  const { bloodRequests, donations, getRequestsForDonor, loading } = useApp();
 
-  const compatibleRequests = user ? getRequestsForDonor(user.id, user.bloodType) : [];
-  const urgentRequests = bloodRequests.filter(req => req.urgencyLevel === 'critical').slice(0, 3);
-  const recentDonations = donations.filter(d => d.donorId === user?.id).slice(0, 3);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
+  const compatibleRequests = user ? getRequestsForDonor(user.id, user.blood_type) : [];
+  const urgentRequests = bloodRequests.filter(req => req.urgency_level === 'critical').slice(0, 3);
+  const recentDonations = donations.filter(d => d.donor_id === user?.id).slice(0, 3);
+  const upcomingAppointments = donations.filter(d => d.donor_id === user?.id && d.status === 'confirmed');
 
   const stats = [
     {
       name: 'Lives Saved',
-      value: user?.totalDonations || 0,
+      value: user?.total_donations || 0,
       icon: Heart,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
@@ -65,24 +72,24 @@ export const Dashboard: React.FC = () => {
         <AlertTriangle className="h-5 w-5 text-red-600" />
       </div>
       <div className="space-y-4">
-        {urgentRequests.map((request) => (
+        {urgentRequests.length === 0 ? <p className="text-gray-500">No critical requests at the moment.</p> : urgentRequests.map((request) => (
           <div key={request.id} className="border border-red-200 rounded-lg p-4 bg-red-50">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    {request.patientBloodType}
+                    {request.patient_blood_type}
                   </span>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                    {request.urgencyLevel}
+                    {request.urgency_level}
                   </span>
                 </div>
-                <h4 className="font-medium text-gray-900">{request.patientName}</h4>
-                <p className="text-sm text-gray-600">{request.hospitalName}</p>
+                <h4 className="font-medium text-gray-900">{request.patient_name}</h4>
+                <p className="text-sm text-gray-600">{request.hospital_name}</p>
                 <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                   <span className="flex items-center">
                     <Heart className="h-4 w-4 mr-1" />
-                    {request.unitsRequired - request.unitsFulfilled} units needed
+                    {request.units_required - request.units_fulfilled} units needed
                   </span>
                   <span className="flex items-center">
                     <MapPin className="h-4 w-4 mr-1" />
@@ -104,39 +111,19 @@ export const Dashboard: React.FC = () => {
     <div className="bg-white rounded-xl shadow-lg p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-6">Recent Activity</h3>
       <div className="space-y-4">
-        <div className="flex items-start space-x-3">
-          <div className="bg-green-100 p-2 rounded-full">
-            <CheckCircle className="h-4 w-4 text-green-600" />
+        {recentDonations.length === 0 ? <p className="text-gray-500">No recent activity.</p> : recentDonations.map(donation => (
+          <div key={donation.id} className="flex items-start space-x-3">
+            <div className="bg-green-100 p-2 rounded-full">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900">
+                Donation completed at {donation.donation_center}
+              </p>
+              <p className="text-sm text-gray-500">{new Date(donation.created_at).toLocaleString()}</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900">
-              Donation completed at Apollo Hospital
-            </p>
-            <p className="text-sm text-gray-500">2 hours ago</p>
-          </div>
-        </div>
-        <div className="flex items-start space-x-3">
-          <div className="bg-blue-100 p-2 rounded-full">
-            <MessageCircle className="h-4 w-4 text-blue-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900">
-              New message from Sarah Johnson
-            </p>
-            <p className="text-sm text-gray-500">4 hours ago</p>
-          </div>
-        </div>
-        <div className="flex items-start space-x-3">
-          <div className="bg-red-100 p-2 rounded-full">
-            <Heart className="h-4 w-4 text-red-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900">
-              Matched with urgent O+ request
-            </p>
-            <p className="text-sm text-gray-500">6 hours ago</p>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -148,34 +135,27 @@ export const Dashboard: React.FC = () => {
         <Calendar className="h-5 w-5 text-blue-600" />
       </div>
       <div className="space-y-4">
-        <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-900">Blood Donation - Fortis Hospital</h4>
-              <p className="text-sm text-gray-600">Tomorrow, 10:00 AM</p>
-              <p className="text-sm text-blue-600">For Meera Patel (A+ needed)</p>
+        {upcomingAppointments.length === 0 ? <p className="text-gray-500">No upcoming appointments.</p> : upcomingAppointments.map(donation => {
+          const request = bloodRequests.find(req => req.id === donation.request_id);
+          if (!request) return null;
+
+          return (
+            <div key={donation.id} className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-gray-900">Blood Donation - {donation.donation_center}</h4>
+                  <p className="text-sm text-gray-600">{new Date(donation.donation_date).toLocaleString()}</p>
+                  <p className="text-sm text-blue-600">For {request.patient_name} ({request.patient_blood_type} needed)</p>
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Confirmed
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Confirmed
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-900">Health Checkup - Apollo Hospital</h4>
-              <p className="text-sm text-gray-600">Next Friday, 2:00 PM</p>
-              <p className="text-sm text-gray-500">Quarterly donor health screening</p>
-            </div>
-            <div className="text-right">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                Scheduled
-              </span>
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -186,22 +166,22 @@ export const Dashboard: React.FC = () => {
       <div className="bg-gradient-to-r from-red-600 to-blue-600 rounded-xl shadow-lg p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Welcome back, {user?.fullName?.split(' ')[0]}!</h1>
+            <h1 className="text-3xl font-bold">Welcome back, {user?.full_name?.split(' ')[0]}!</h1>
             <p className="text-red-100 mt-2">
-              Thank you for being a life-saver in District {user?.districtId}
+              Thank you for being a life-saver in District {user?.district_id}
             </p>
             <div className="flex items-center space-x-4 mt-4">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                   <Heart className="h-4 w-4" />
                 </div>
-                <span className="text-sm">Blood Type: {user?.bloodType}</span>
+                <span className="text-sm">Blood Type: {user?.blood_type}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                   <Award className="h-4 w-4" />
                 </div>
-                <span className="text-sm">Donations: {user?.totalDonations}</span>
+                <span className="text-sm">Donations: {user?.total_donations}</span>
               </div>
             </div>
           </div>
@@ -278,24 +258,24 @@ export const Dashboard: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-gray-900">Life Saver (5 donations)</span>
-                  <span className="text-sm text-gray-500">{user?.totalDonations || 0}/5</span>
+                  <span className="text-sm text-gray-500">{user?.total_donations || 0}/5</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-red-600 h-2 rounded-full" 
-                    style={{ width: `${Math.min(((user?.totalDonations || 0) / 5) * 100, 100)}%` }}
+                    style={{ width: `${Math.min(((user?.total_donations || 0) / 5) * 100, 100)}%` }}
                   ></div>
                 </div>
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-gray-900">Hero (10 donations)</span>
-                  <span className="text-sm text-gray-500">{user?.totalDonations || 0}/10</span>
+                  <span className="text-sm text-gray-500">{user?.total_donations || 0}/10</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-blue-600 h-2 rounded-full" 
-                    style={{ width: `${Math.min(((user?.totalDonations || 0) / 10) * 100, 100)}%` }}
+                    style={{ width: `${Math.min(((user?.total_donations || 0) / 10) * 100, 100)}%` }}
                   ></div>
                 </div>
               </div>
