@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useApp } from '../context/AppContext';
+"use client";
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../../src/context/AuthContext';
+import { useApp } from '../../../src/context/AppContext';
 import { 
   Heart, 
   User, 
@@ -13,12 +15,12 @@ import {
   Building,
   FileText
 } from 'lucide-react';
-import { BloodType, UrgencyLevel } from '../types';
+import { BloodType, UrgencyLevel } from '../../../src/types';
 
-export const BloodRequest: React.FC = () => {
+export default function BloodRequestPage() {
   const { user } = useAuth();
   const { addBloodRequest } = useApp();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const [formData, setFormData] = useState({
     patientName: '',
@@ -78,7 +80,7 @@ export const BloodRequest: React.FC = () => {
       };
 
       addBloodRequest(requestData);
-      navigate('/my-requests');
+      router.push('/my-requests');
     } catch (error) {
       console.error('Error creating blood request:', error);
     } finally {
@@ -471,4 +473,4 @@ export const BloodRequest: React.FC = () => {
       </div>
     </div>
   );
-};
+}

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useApp } from '../context/AppContext';
+"use client";
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useAuth } from '../../../src/context/AuthContext';
+import { useApp } from '../../../src/context/AppContext';
 import { 
   Heart, 
   Plus, 
@@ -15,9 +17,9 @@ import {
   Calendar,
   Phone
 } from 'lucide-react';
-import { BloodRequest } from '../types';
+import { BloodRequest } from '../../../src/types';
 
-export const MyRequests: React.FC = () => {
+export default function MyRequestsPage() {
   const { user } = useAuth();
   const { bloodRequests, updateBloodRequest } = useApp();
   
@@ -109,7 +111,7 @@ export const MyRequests: React.FC = () => {
             </div>
           </div>
           <Link
-            to="/request"
+            href="/request"
             className="bg-white text-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-red-50 transition-colors duration-200 flex items-center space-x-2"
           >
             <Plus className="h-5 w-5" />
@@ -211,7 +213,7 @@ export const MyRequests: React.FC = () => {
                   : `No ${activeTab} requests to display.`}
               </p>
               <Link
-                to="/request"
+                href="/request"
                 className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors duration-200"
               >
                 Create New Request
@@ -390,4 +392,4 @@ export const MyRequests: React.FC = () => {
       )}
     </div>
   );
-};
+}

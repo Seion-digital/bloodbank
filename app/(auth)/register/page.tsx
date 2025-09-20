@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { Heart, User, Mail, Phone, Lock, Eye, EyeOff, AlertCircle, MapPin, Building } from 'lucide-react';
-import { BloodType, UserType } from '../../types';
+"use client";
 
-export const RegisterForm: React.FC = () => {
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../../src/context/AuthContext';
+import { Heart, User, Mail, Phone, Lock, Eye, EyeOff, AlertCircle, MapPin, Building } from 'lucide-react';
+import { BloodType, UserType } from '../../../src/types';
+
+export default function RegisterPage() {
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -34,7 +37,7 @@ export const RegisterForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   
   const { register } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const districts = [
     { id: '3232', name: 'District 3232 - Karnataka & Goa' },
@@ -95,7 +98,7 @@ export const RegisterForm: React.FC = () => {
     try {
       const success = await register(formData);
       if (success) {
-        navigate('/dashboard');
+        router.push('/dashboard');
       } else {
         setError('Registration failed. Please try again.');
       }
@@ -588,7 +591,7 @@ export const RegisterForm: React.FC = () => {
         <div className="text-center">
           <p className="text-sm text-gray-600">
             Already have an account?{' '}
-            <Link to="/login" className="font-medium text-red-600 hover:text-red-500">
+            <Link href="/login" className="font-medium text-red-600 hover:text-red-500">
               Sign in here
             </Link>
           </p>
@@ -596,4 +599,4 @@ export const RegisterForm: React.FC = () => {
       </div>
     </div>
   );
-};
+}

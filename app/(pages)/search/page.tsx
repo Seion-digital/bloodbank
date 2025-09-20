@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useApp } from '../context/AppContext';
+"use client";
+
+import { useState } from 'react';
+import { useAuth } from '../../../src/context/AuthContext';
+import { useApp } from '../../../src/context/AppContext';
 import { 
   Search, 
   Filter, 
@@ -13,9 +15,9 @@ import {
   Clock,
   User
 } from 'lucide-react';
-import { BloodType } from '../types';
+import { BloodType } from '../../../src/types';
 
-export const SearchDonors: React.FC = () => {
+export default function SearchDonorsPage() {
   const { user } = useAuth();
   const { bloodRequests } = useApp();
   
@@ -368,4 +370,4 @@ export const SearchDonors: React.FC = () => {
       )}
     </div>
   );
-};
+}

@@ -1,5 +1,4 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { 
   Heart, 
   Users, 
@@ -12,7 +11,7 @@ import {
   Star
 } from 'lucide-react';
 
-export const Home: React.FC = () => {
+export default function HomePage() {
   const stats = [
     { label: 'Lives Saved', value: '5,247', icon: Heart },
     { label: 'Active Donors', value: '12,458', icon: Users },
@@ -83,14 +82,14 @@ export const Home: React.FC = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                to="/register"
+                href="/register"
                 className="bg-white text-red-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-red-50 transition-colors duration-200 flex items-center justify-center space-x-2"
               >
                 <Heart className="h-5 w-5" />
                 <span>Join as Donor</span>
               </Link>
               <Link
-                to="/request"
+                href="/request"
                 className="bg-red-500 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-red-400 transition-colors duration-200 flex items-center justify-center space-x-2 border-2 border-white border-opacity-50"
               >
                 <Users className="h-5 w-5" />
@@ -240,7 +239,7 @@ export const Home: React.FC = () => {
               <span>+91-80-BLOOD-01</span>
             </div>
             <Link
-              to="/request/emergency"
+              href="/request/emergency"
               className="bg-red-500 text-white px-8 py-4 rounded-lg font-semibold hover:bg-red-400 transition-colors duration-200 flex items-center space-x-2 border-2 border-white border-opacity-50"
             >
               <span>Submit Emergency Request</span>
@@ -261,14 +260,14 @@ export const Home: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/register"
+              href="/register"
               className="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-blue-50 transition-colors duration-200 flex items-center justify-center space-x-2"
             >
               <Users className="h-5 w-5" />
               <span>Register Now</span>
             </Link>
             <Link
-              to="/search"
+              href="/search"
               className="bg-blue-500 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-blue-400 transition-colors duration-200 flex items-center justify-center space-x-2 border-2 border-white border-opacity-50"
             >
               <Heart className="h-5 w-5" />
@@ -279,4 +278,4 @@ export const Home: React.FC = () => {
       </section>
     </div>
   );
-};
+}

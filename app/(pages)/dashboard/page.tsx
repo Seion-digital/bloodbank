@@ -1,6 +1,7 @@
-import React from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useApp } from '../context/AppContext';
+"use client";
+
+import { useAuth } from '../../../src/context/AuthContext';
+import { useApp } from '../../../src/context/AppContext';
 import { 
   Heart, 
   Users, 
@@ -13,9 +14,9 @@ import {
   CheckCircle,
   MessageCircle
 } from 'lucide-react';
-import { BloodRequest } from '../types';
+import { BloodRequest } from '../../../src/types';
 
-export const Dashboard: React.FC = () => {
+export default function DashboardPage() {
   const { user } = useAuth();
   const { bloodRequests, donations, getRequestsForDonor } = useApp();
 
@@ -305,4 +306,4 @@ export const Dashboard: React.FC = () => {
       </div>
     </div>
   );
-};
+}

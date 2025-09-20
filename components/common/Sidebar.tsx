@@ -1,6 +1,7 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '../../src/context/AuthContext';
 import {
   Heart,
   Search,
@@ -18,9 +19,9 @@ import {
 
 export const Sidebar: React.FC = () => {
   const { user } = useAuth();
-  const location = useLocation();
+  const pathname = usePathname();
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => pathname === path;
 
   const menuItems = [
     {
@@ -128,7 +129,7 @@ export const Sidebar: React.FC = () => {
             return (
               <Link
                 key={item.path}
-                to={item.path}
+                href={item.path}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
                   isActive(item.path)
                     ? 'bg-red-50 text-red-700 border-r-2 border-red-600'

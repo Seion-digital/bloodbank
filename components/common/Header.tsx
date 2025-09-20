@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../src/context/AuthContext';
 import { 
   Heart, 
   Bell, 
@@ -15,13 +16,13 @@ import {
 
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    router.push('/');
   };
 
   return (
@@ -30,7 +31,7 @@ export const Header: React.FC = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="bg-red-600 p-2 rounded-lg">
                 <Heart className="h-6 w-6 text-white" />
               </div>
@@ -61,7 +62,7 @@ export const Header: React.FC = () => {
               <>
                 {/* Emergency Request Button */}
                 <Link
-                  to="/request/emergency"
+                  href="/request/emergency"
                   className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
                 >
                   <Heart className="h-4 w-4" />
@@ -124,7 +125,7 @@ export const Header: React.FC = () => {
                         </div>
                       </div>
                       <div className="px-4 py-2 border-t border-gray-100">
-                        <Link to="/notifications" className="text-sm text-red-600 hover:text-red-700">
+                        <Link href="/notifications" className="text-sm text-red-600 hover:text-red-700">
                           View all notifications
                         </Link>
                       </div>
@@ -154,14 +155,14 @@ export const Header: React.FC = () => {
                         <p className="text-xs text-red-600 capitalize">{user.userType}</p>
                       </div>
                       <Link
-                        to="/profile"
+                        href="/profile"
                         className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-50"
                       >
                         <User className="h-4 w-4" />
                         <span>Profile</span>
                       </Link>
                       <Link
-                        to="/settings"
+                        href="/settings"
                         className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-50"
                       >
                         <Settings className="h-4 w-4" />
@@ -181,13 +182,13 @@ export const Header: React.FC = () => {
             ) : (
               <div className="flex items-center space-x-3">
                 <Link
-                  to="/login"
+                  href="/login"
                   className="text-gray-600 hover:text-gray-900 font-medium"
                 >
                   Sign In
                 </Link>
                 <Link
-                  to="/register"
+                  href="/register"
                   className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
                 >
                   Join Now

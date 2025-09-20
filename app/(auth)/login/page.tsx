@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+"use client";
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../../src/context/AuthContext';
 import { Heart, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
-export const LoginForm: React.FC = () => {
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -11,7 +14,7 @@ export const LoginForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +24,7 @@ export const LoginForm: React.FC = () => {
     try {
       const success = await login(email, password);
       if (success) {
-        navigate('/dashboard');
+        router.push('/dashboard');
       } else {
         setError('Invalid email or password');
       }
@@ -121,7 +124,7 @@ export const LoginForm: React.FC = () => {
               </div>
 
               <div className="text-sm">
-                <Link to="/forgot-password" className="font-medium text-red-600 hover:text-red-500">
+                <Link href="/forgot-password" className="font-medium text-red-600 hover:text-red-500">
                   Forgot your password?
                 </Link>
               </div>
@@ -178,7 +181,7 @@ export const LoginForm: React.FC = () => {
           <div className="text-center">
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
-              <Link to="/register" className="font-medium text-red-600 hover:text-red-500">
+              <Link href="/register" className="font-medium text-red-600 hover:text-red-500">
                 Register now
               </Link>
             </p>
@@ -187,4 +190,4 @@ export const LoginForm: React.FC = () => {
       </div>
     </div>
   );
-};
+}
