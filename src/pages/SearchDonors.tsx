@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { 
   Search, 
@@ -13,31 +14,9 @@ import {
   User as UserIcon
 } from 'lucide-react';
 import { BloodType, User } from '../types';
-import { useAuth } from '../context/AuthContext';
-
-// Haversine formula to calculate distance between two lat/lng points
-const getDistance = (coords1: {lat: number, lng: number} | null, coords2: {lat: number, lng: number} | null) => {
-  if (!coords1 || !coords2) return Infinity;
-
-  const toRad = (x: number) => (x * Math.PI) / 180;
-  const R = 6371; // Earth radius in km
-
-  const dLat = toRad(coords2.lat - coords1.lat);
-  const dLon = toRad(coords2.lng - coords1.lng);
-  const lat1 = toRad(coords1.lat);
-  const lat2 = toRad(coords2.lat);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
-};
-
 
 export const SearchDonors: React.FC = () => {
-  const { user: currentUser } = useAuth();
+  const { user } = useAuth();
   const { users, loading } = useApp();
   
   const [searchFilters, setSearchFilters] = useState({
@@ -50,17 +29,6 @@ export const SearchDonors: React.FC = () => {
 
   const [searchResults, setSearchResults] = useState<User[]>([]);
 
-  useEffect(() => {
-    setSearchResults(users);
-  }, [users]);
-
-  const bloodTypes: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-
-  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setSearchFilters(prev => ({ ...prev, [name]: value }));
-  };
-
   const getDonationEligibility = (lastDonation: string | null) => {
     if (!lastDonation) {
       return { eligible: true, message: 'Eligible to donate', color: 'text-green-600' };
@@ -68,49 +36,27 @@ export const SearchDonors: React.FC = () => {
     const lastDonationDate = new Date(lastDonation);
     const now = new Date();
     const daysSince = Math.floor((now.getTime() - lastDonationDate.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (daysSince >= 90) {
       return { eligible: true, message: 'Eligible to donate', color: 'text-green-600' };
     } else {
       const daysRemaining = 90 - daysSince;
-      return { 
-        eligible: false, 
-        message: `Eligible in ${daysRemaining} days`, 
-        color: 'text-orange-600' 
+      return {
+        eligible: false,
+        message: `Eligible in ${daysRemaining} days`,
+        color: 'text-orange-600'
       };
     }
   };
 
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setSearchFilters(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleSearch = () => {
-    let filteredUsers = [...users];
-
-    if (searchFilters.bloodType) {
-      filteredUsers = filteredUsers.filter(u => u.blood_type === searchFilters.bloodType);
-    }
-
-    if (searchFilters.location) {
-      const searchTerm = searchFilters.location.toLowerCase();
-      filteredUsers = filteredUsers.filter(u =>
-        u.city?.toLowerCase().includes(searchTerm) ||
-        u.state?.toLowerCase().includes(searchTerm) ||
-        u.address?.toLowerCase().includes(searchTerm)
-      );
-    }
-
-    if (searchFilters.availability === 'available') {
-      filteredUsers = filteredUsers.filter(u => u.is_active);
-    } else if (searchFilters.availability === 'eligible') {
-      filteredUsers = filteredUsers.filter(u => getDonationEligibility(u.last_donation_date).eligible);
-    }
-
-    if (currentUser?.coordinates) {
-      filteredUsers = filteredUsers.filter(u => {
-        const distance = getDistance(currentUser.coordinates, u.coordinates);
-        return distance <= parseInt(searchFilters.maxDistance);
-      });
-    }
-
-    setSearchResults(filteredUsers);
+    // In a real app, this would make an API call with the search filters
+    console.log('Searching with filters:', searchFilters);
   };
 
   const handleContactDonor = (donorId: string) => {
@@ -120,6 +66,8 @@ export const SearchDonors: React.FC = () => {
   const handleSendMessage = (donorId: string) => {
     console.log('Sending message to donor:', donorId);
   };
+
+  const bloodTypes: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   if (loading) {
     return (
@@ -256,9 +204,8 @@ export const SearchDonors: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {searchResults.map((donor) => {
+          {users.map((donor) => {
             const eligibility = getDonationEligibility(donor.last_donation_date);
-            const distance = currentUser?.coordinates ? getDistance(currentUser.coordinates, donor.coordinates) : null;
 
             return (
               <div key={donor.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200">
@@ -294,7 +241,7 @@ export const SearchDonors: React.FC = () => {
                       <div className="text-center">
                         <div className="flex items-center justify-center space-x-1">
                           <MapPin className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm font-medium text-gray-900">{distance ? `${distance.toFixed(1)} km` : 'N/A'}</span>
+                          <span className="text-sm font-medium text-gray-900">5 km</span>
                         </div>
                         <span className="text-xs text-gray-500">Distance</span>
                       </div>

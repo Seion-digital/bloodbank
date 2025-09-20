@@ -13,3 +13,7 @@ To log in as an admin, you must use the "Continue with Google" feature with a Go
 ## Google OAuth Setup
 
 To enable the "Continue with Google" feature, you must configure Google OAuth in your Supabase project. Please follow the detailed instructions in the `google_auth_setup.md` file.
+
+## Database Setup
+
+This application requires a Supabase database. The schema is defined in `scripts/setup.sql`. You must run this script in your Supabase SQL editor to create the necessary tables and policies.

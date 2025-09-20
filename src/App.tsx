@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { Layout } from './components/common/Layout';
 import { LoginForm } from './components/auth/LoginForm';
-import { RegisterForm } from './components/auth/RegisterForm';
 import { Home } from './pages/Home';
 import { Dashboard } from './pages/Dashboard';
 import { BloodRequest } from './pages/BloodRequest';
@@ -54,7 +53,6 @@ function AppRoutes() {
       {/* Public Routes */}
       <Route path="/" element={<Layout showSidebar={false}><Home /></Layout>} />
       <Route path="/login" element={<PublicRoute><LoginForm /></PublicRoute>} />
-      <Route path="/register" element={<PublicRoute><RegisterForm /></PublicRoute>} />
       
       {/* Protected Routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />

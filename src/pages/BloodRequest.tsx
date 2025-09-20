@@ -67,7 +67,7 @@ export const BloodRequest: React.FC = () => {
         hospital_name: formData.hospital_name,
         hospital_address: formData.hospital_address,
         hospital_contact: formData.hospital_contact,
-        required_by_date: formData.required_by_date,
+        required_by_date: new Date(formData.required_by_date).toISOString(),
         special_requirements: formData.special_requirements,
         status: 'active' as const,
         contact_person: formData.contact_person,

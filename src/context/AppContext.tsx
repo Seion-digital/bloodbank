@@ -10,11 +10,11 @@ interface AppContextType {
   achievements: Achievement[];
   districts: any[]; // Consider creating a District type
   users: User[];
-  addBloodRequest: (request: Omit<BloodRequest, 'id' | 'createdAt' | 'updatedAt' | 'requesterId'>) => Promise<void>;
+  addBloodRequest: (request: Omit<BloodRequest, 'id' | 'created_at' | 'updated_at' | 'requester_id'>) => Promise<void>;
   updateBloodRequest: (id: string, updates: Partial<BloodRequest>) => Promise<void>;
-  addDonation: (donation: Omit<Donation, 'id' | 'createdAt' | 'updatedAt' | 'donorId'>) => Promise<void>;
+  addDonation: (donation: Omit<Donation, 'id' | 'created_at' | 'updated_at' | 'donor_id'>) => Promise<void>;
   updateDonation: (id: string, updates: Partial<Donation>) => Promise<void>;
-  sendMessage: (message: Omit<Message, 'id' | 'timestamp' | 'senderId'>) => Promise<void>;
+  sendMessage: (message: Omit<Message, 'id' | 'timestamp' | 'sender_id'>) => Promise<void>;
   markMessageAsRead: (messageId: string) => Promise<void>;
   getMatchingDonors: (request: BloodRequest) => User[];
   getRequestsForDonor: (userId: string, bloodType: string) => BloodRequest[];
@@ -85,7 +85,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchData();
   }, []);
 
-  const addBloodRequest = async (requestData: Omit<BloodRequest, 'id' | 'createdAt' | 'updatedAt' | 'requesterId'>) => {
+  const addBloodRequest = async (requestData: Omit<BloodRequest, 'id' | 'created_at' | 'updated_at' | 'requester_id'>) => {
     if (!user) throw new Error("User must be logged in to create a request.");
     const { data, error } = await supabase
       .from('blood_requests')
@@ -109,7 +109,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addDonation = async (donationData: Omit<Donation, 'id' | 'createdAt' | 'updatedAt' | 'donorId'>) => {
+  const addDonation = async (donationData: Omit<Donation, 'id' | 'created_at' | 'updated_at' | 'donor_id'>) => {
     if (!user) throw new Error("User must be logged in to make a donation.");
     const { data, error } = await supabase
       .from('donations')
@@ -133,7 +133,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const sendMessage = async (messageData: Omit<Message, 'id' | 'timestamp' | 'senderId'>) => {
+  const sendMessage = async (messageData: Omit<Message, 'id' | 'timestamp' | 'sender_id'>) => {
     if (!user) throw new Error("User must be logged in to send a message.");
     const { data, error } = await supabase
       .from('messages')
@@ -172,13 +172,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const getMatchingDonors = (request: BloodRequest): User[] => {
-    const compatibleTypes = getCompatibleBloodTypes(request.patientBloodType);
-    return users.filter(u => compatibleTypes.includes(u.bloodType));
+    const compatibleTypes = getCompatibleBloodTypes(request.patient_blood_type);
+    return users.filter(u => compatibleTypes.includes(u.blood_type));
   };
 
   const getRequestsForDonor = (userId: string, bloodType: string): BloodRequest[] => {
     return bloodRequests.filter(request => {
-      const compatibleTypes = getCompatibleBloodTypes(request.patientBloodType);
+      const compatibleTypes = getCompatibleBloodTypes(request.patient_blood_type);
       return compatibleTypes.includes(bloodType) && request.status === 'active';
     });
   };
