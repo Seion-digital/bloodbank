@@ -369,7 +369,7 @@ export const SearchDonors: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Donors Found</h3>
           <p className="text-gray-600 mb-6">
             Try adjusting your search filters to find more donors in your area.
-          p>
+          </p>
           <button
             onClick={() => setSearchFilters({
               bloodType: '',

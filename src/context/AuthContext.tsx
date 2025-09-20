@@ -88,7 +88,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const adminUser = ADMIN_USERS.find(admin => admin.email === email && admin.password === password);
     
     if (adminUser) {
-      // First, try to sign up the admin user if they don't exist in Supabase auth
+      // This logic handles the creation of admin users on their first login.
+      // It attempts to sign them up in Supabase Auth if they don't exist,
+      // ensuring that admin users can log in without manual setup in Supabase.
+      // This is a simple approach based on the user's request for basic auth.
       let { data: existingUser, error: existingUserError } = await supabase.from('users').select('id').eq('email', email).single();
       if (!existingUser) {
           const { data: authData, error: signUpError } = await supabase.auth.signUp({ email, password });
