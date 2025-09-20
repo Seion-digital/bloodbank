@@ -286,13 +286,12 @@ export const MyRequests: React.FC = () => {
                         </button>
                         
                         {(request.status === 'active' || request.status === 'partial') && (
-                          <Link
-                            to={`/request/${request.id}`}
+                          <button
                             className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-100 rounded-lg transition-colors"
                             title="Edit Request"
                           >
                             <Edit3 className="h-4 w-4" />
-                          </Link>
+                          </button>
                         )}
 
                         {request.status === 'fulfilled' && (

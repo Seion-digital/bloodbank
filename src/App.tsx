@@ -59,7 +59,6 @@ function AppRoutes() {
       {/* Protected Routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/request" element={<ProtectedRoute><Layout><BloodRequest /></Layout></ProtectedRoute>} />
-      <Route path="/request/:id" element={<ProtectedRoute><Layout><BloodRequest /></Layout></ProtectedRoute>} />
       <Route path="/search" element={<ProtectedRoute><Layout><SearchDonors /></Layout></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Layout><Messages /></Layout></ProtectedRoute>} />
       <Route path="/my-requests" element={<ProtectedRoute><Layout><MyRequests /></Layout></ProtectedRoute>} />

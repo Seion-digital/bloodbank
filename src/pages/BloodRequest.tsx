@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { 
@@ -13,14 +13,12 @@ import {
   Building,
   FileText
 } from 'lucide-react';
-import { BloodType, UrgencyLevel, BloodRequest as BloodRequestType } from '../types';
+import { BloodType, UrgencyLevel } from '../types';
 
 export const BloodRequest: React.FC = () => {
   const { user } = useAuth();
-  const { addBloodRequest, updateBloodRequest, bloodRequests } = useApp();
+  const { addBloodRequest } = useApp();
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const isEditMode = Boolean(id);
 
   const [formData, setFormData] = useState({
     patientName: '',
@@ -41,29 +39,6 @@ export const BloodRequest: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isEditMode && bloodRequests.length > 0) {
-      const requestToEdit = bloodRequests.find(req => req.id === id);
-      if (requestToEdit) {
-        setFormData({
-          patientName: requestToEdit.patientName,
-          patientAge: String(requestToEdit.patientAge),
-          patientBloodType: requestToEdit.patientBloodType,
-          medicalCondition: requestToEdit.medicalCondition,
-          urgencyLevel: requestToEdit.urgencyLevel,
-          unitsRequired: String(requestToEdit.unitsRequired),
-          hospitalName: requestToEdit.hospitalName,
-          hospitalAddress: requestToEdit.hospitalAddress,
-          hospitalContact: requestToEdit.hospitalContact,
-          requiredByDate: new Date(requestToEdit.requiredByDate).toISOString().slice(0, 16),
-          specialRequirements: requestToEdit.specialRequirements,
-          contactPerson: requestToEdit.contactPerson,
-          contactNumber: requestToEdit.contactNumber,
-        });
-      }
-    }
-  }, [id, isEditMode, bloodRequests]);
-
   const bloodTypes: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
   const urgencyLevels = [
     { value: 'critical', label: 'Critical (Life-threatening)', color: 'text-red-600' },
@@ -81,36 +56,31 @@ export const BloodRequest: React.FC = () => {
     setIsLoading(true);
 
     try {
-        const requestData = {
-            patientName: formData.patientName,
-            patientAge: parseInt(formData.patientAge),
-            patientBloodType: formData.patientBloodType,
-            medicalCondition: formData.medicalCondition,
-            urgencyLevel: formData.urgencyLevel,
-            unitsRequired: parseInt(formData.unitsRequired),
-            hospitalName: formData.hospitalName,
-            hospitalAddress: formData.hospitalAddress,
-            hospitalContact: formData.hospitalContact,
-            requiredByDate: new Date(formData.requiredByDate).toISOString(),
-            specialRequirements: formData.specialRequirements,
-            contactPerson: formData.contactPerson,
-            contactNumber: formData.contactNumber,
-            ...(isEditMode ? {} : {
-                unitsFulfilled: 0,
-                status: 'active' as const,
-                districtId: user?.districtId || '3232',
-                coordinates: { lat: 12.9716, lng: 77.5946 }
-            })
-        };
+      const requestData = {
+        requesterId: user?.id || '',
+        patientName: formData.patientName,
+        patientAge: parseInt(formData.patientAge),
+        patientBloodType: formData.patientBloodType,
+        medicalCondition: formData.medicalCondition,
+        urgencyLevel: formData.urgencyLevel,
+        unitsRequired: parseInt(formData.unitsRequired),
+        unitsFulfilled: 0,
+        hospitalName: formData.hospitalName,
+        hospitalAddress: formData.hospitalAddress,
+        hospitalContact: formData.hospitalContact,
+        requiredByDate: formData.requiredByDate,
+        specialRequirements: formData.specialRequirements,
+        status: 'active' as const,
+        contactPerson: formData.contactPerson,
+        contactNumber: formData.contactNumber,
+        districtId: user?.districtId || '3232',
+        coordinates: { lat: 12.9716, lng: 77.5946 }
+      };
 
-      if (isEditMode) {
-        await updateBloodRequest(id as string, requestData);
-      } else {
-        await addBloodRequest(requestData as Omit<BloodRequestType, 'id' | 'createdAt' | 'updatedAt' | 'requesterId'>);
-      }
+      addBloodRequest(requestData);
       navigate('/my-requests');
     } catch (error) {
-      console.error('Error saving blood request:', error);
+      console.error('Error creating blood request:', error);
     } finally {
       setIsLoading(false);
     }
@@ -399,8 +369,8 @@ export const BloodRequest: React.FC = () => {
             <Heart className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">{isEditMode ? 'Edit Blood Request' : 'Request Blood'}</h1>
-            <p className="text-red-100 mt-2">{isEditMode ? 'Update the details of your request' : 'Connect with donors to save a life'}</p>
+            <h1 className="text-3xl font-bold">Request Blood</h1>
+            <p className="text-red-100 mt-2">Connect with donors to save a life</p>
           </div>
         </div>
       </div>
@@ -472,12 +442,12 @@ export const BloodRequest: React.FC = () => {
                 {isLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>{isEditMode ? 'Updating...' : 'Creating Request...'}</span>
+                    <span>Creating Request...</span>
                   </>
                 ) : (
                   <>
                     <Heart className="h-5 w-5" />
-                    <span>{isEditMode ? 'Update Request' : 'Submit Request'}</span>
+                    <span>Submit Request</span>
                   </>
                 )}
               </button>
