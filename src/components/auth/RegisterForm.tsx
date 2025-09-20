@@ -93,8 +93,7 @@ export const RegisterForm: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // a partial user from the form data
-      const userData: Partial<User> & { password?: string } = {
+      const success = await register({
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
@@ -113,9 +112,7 @@ export const RegisterForm: React.FC = () => {
         state: formData.state,
         emergency_contact: formData.emergency_contact,
         preferred_hospital: formData.preferred_hospital,
-      };
-
-      const success = await register(userData);
+      });
       if (success) {
         navigate('/dashboard');
       } else {

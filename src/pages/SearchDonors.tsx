@@ -16,7 +16,7 @@ import { BloodType, User } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 // Haversine formula to calculate distance between two lat/lng points
-const getDistance = (coords1: {lat: number, lng: number}, coords2: {lat: number, lng: number}) => {
+const getDistance = (coords1: {lat: number, lng: number} | null, coords2: {lat: number, lng: number} | null) => {
   if (!coords1 || !coords2) return Infinity;
 
   const toRad = (x: number) => (x * Math.PI) / 180;
